@@ -78,6 +78,17 @@ describe('AwsIamGraphPlugin.build', () => {
         },
       },
     });
+    expect(phases[2]?.rules[0]).toStrictEqual({
+      id: 'RemoveNodeAndReconnectEdges',
+      config: {
+        node: {
+          attr: {
+            key: 'terraform.resource',
+            in: ['aws_iam_role_policy_attachment', 'aws_iam_policy_attachment'],
+          },
+        },
+      },
+    });
     expect(phases[3]?.rules[0]).toStrictEqual({
       id: 'RemoveNodeAndReconnectEdges',
       config: {
@@ -257,6 +268,86 @@ describe('AwsIamGraphPlugin.build', () => {
     expect(phases[3]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
   });
 
+  it('shoud keep policy documents in non-full trust_only mode', () => {
+    const phases = buildPhases({
+      mode: 'roles_only',
+      policyDocuments: 'trust_only',
+    });
+
+    expect(phases.map((phase) => phase.phase)).toStrictEqual([
+      'normalize',
+      'main',
+      'main',
+      'main',
+      'main',
+      'cleanup',
+    ]);
+    expect(phases[3]?.rules[0]).toStrictEqual({
+      id: 'RemoveNodeAndReconnectEdges',
+      config: {
+        node: {
+          and: [
+            {
+              attr: {
+                key: 'terraform.resource',
+                startsWith: 'aws_iam_',
+              },
+            },
+            {
+              not: {
+                attr: {
+                  key: 'terraform.resource',
+                  in: ['aws_iam_role', 'aws_iam_policy_document'],
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+    expect(phases[4]?.rules[0]).toStrictEqual({
+      id: 'RemoveNodeAndReconnectEdges',
+      config: {
+        node: {
+          and: [
+            {
+              attr: {
+                key: 'terraform.resource',
+                eq: 'aws_iam_policy_document',
+              },
+            },
+            {
+              not: {
+                or: [
+                  {
+                    edge: {
+                      in: {
+                        attr: {
+                          key: 'terraform.resource',
+                          eq: 'aws_iam_role',
+                        },
+                      },
+                    },
+                  },
+                  {
+                    edge: {
+                      out: {
+                        attr: {
+                          key: 'terraform.resource',
+                          eq: 'aws_iam_role',
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+  });
+
   it('shoud throw for invalid option values', () => {
     const plugin = new AwsIamGraphPlugin();
 
@@ -266,7 +357,7 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow('aws.iam options.mode must be one of: roles_only, roles_policies, full');
+    ).toThrow(`${AwsIamGraphPlugin.id} options.mode must be one of: roles_only, roles_policies, full`);
 
     expect(() =>
       plugin.build({
@@ -276,7 +367,83 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow('aws.iam options.removeOrphans must be a boolean');
+    ).toThrow(`${AwsIamGraphPlugin.id} options.removeOrphans must be a boolean`);
+  });
+
+  it('shoud throw for invalid attachment mode values', () => {
+    const plugin = new AwsIamGraphPlugin();
+
+    expect(() =>
+      plugin.build({
+        options: {
+          attachments: 'invalid',
+        } as unknown as AwsIamGraphPluginOptions,
+        namedRules: new NamedRuleRegistry(),
+        namedRuleSets: new NamedRuleSetRegistry(),
+      } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
+    ).toThrow(
+      `${AwsIamGraphPlugin.id} options.attachments must be one of: remove, convert_to_edge, keep`,
+    );
+  });
+
+  it('shoud throw for invalid policy document mode values', () => {
+    const plugin = new AwsIamGraphPlugin();
+
+    expect(() =>
+      plugin.build({
+        options: {
+          policyDocuments: 'invalid',
+        } as unknown as AwsIamGraphPluginOptions,
+        namedRules: new NamedRuleRegistry(),
+        namedRuleSets: new NamedRuleSetRegistry(),
+      } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
+    ).toThrow(
+      `${AwsIamGraphPlugin.id} options.policyDocuments must be one of: none, trust_only, all`,
+    );
+  });
+
+  it('shoud keep attachment resources when full mode is configured as keep', () => {
+    const phases = buildPhases({
+      mode: 'full',
+      attachments: 'keep',
+    });
+
+    expect(phases).toHaveLength(3);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual([
+      'normalize',
+      'main',
+      'cleanup',
+    ]);
+    expect(phases[1]?.rules).toHaveLength(1);
+    expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
+    expect(phases[2]?.rules).toHaveLength(9);
+    expect(phases[2]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
+  });
+
+  it('shoud remove attachment nodes explicitly when full mode uses remove', () => {
+    const phases = buildPhases({
+      mode: 'full',
+      attachments: 'remove',
+    });
+
+    expect(phases).toHaveLength(4);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual([
+      'normalize',
+      'main',
+      'main',
+      'cleanup',
+    ]);
+    expect(phases[2]?.rules[0]).toStrictEqual({
+      id: 'RemoveNodeAndReconnectEdges',
+      config: {
+        node: {
+          attr: {
+            key: 'terraform.resource',
+            in: ['aws_iam_role_policy_attachment', 'aws_iam_policy_attachment'],
+          },
+        },
+      },
+    });
   });
 
   it('shoud add a final orphan cleanup phase when removeOrphans is enabled', () => {
@@ -294,7 +461,6 @@ describe('AwsIamGraphPlugin.build', () => {
       'cleanup',
       'cleanup',
     ]);
-    expect(phases[4]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
     expect(phases[5]?.rules[0]).toStrictEqual({
       id: 'RemoveLeafChain',
       config: {
