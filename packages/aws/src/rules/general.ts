@@ -1,4 +1,4 @@
-import { NamedRuleRegistry, RemoveNode } from 'terra-graph';
+import { NamedRuleRegistry, RemoveNode } from '@terra-graph/core';
 import { ruleName } from '../namespaces.js';
 
 export default new NamedRuleRegistry({
@@ -45,6 +45,7 @@ export default new NamedRuleRegistry({
       ],
     },
   }),
+  // TODO: this should probably be part of the convention too?
   [ruleName('lambda.only_event_source_mapping')]: new RemoveNode({
     node: {
       and: [
@@ -53,7 +54,11 @@ export default new NamedRuleRegistry({
           not: {
             attr: {
               key: 'terraform.resource',
-              in: ['aws_lambda_function', 'aws_lambda_event_source_mapping'],
+              in: [
+                'aws_lambda_function',
+                'aws_lambda_event_source_mapping',
+                'aws_lambda_permission',
+              ],
             },
           },
         },

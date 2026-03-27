@@ -5,7 +5,7 @@ import {
   NamedRuleRegistry,
   NamedRuleSetRegistry,
   type SerializedRule,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { AwsSns } from './AwsSns.js';
 
 type SerializedPhaseStep = {

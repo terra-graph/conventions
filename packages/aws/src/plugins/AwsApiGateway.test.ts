@@ -13,8 +13,7 @@ import {
   NamedRuleSetRegistry,
   type SerializedRule,
   tgNodeIdFrom,
-} from 'terra-graph';
-import { DirectedGraph } from 'graphology';
+} from '@terra-graph/core';
 import { AwsApiGateway } from './AwsApiGateway.js';
 
 type SerializedPhaseStep = {
@@ -53,7 +52,7 @@ const getCompressRule = (): BaseRule => {
 };
 
 const buildAdapter = (graph: TgGraph): AdapterOperations => {
-  return new GraphologyAdapter(new DirectedGraph()).withTgGraph(graph);
+  return new GraphologyAdapter().withTgGraph(graph);
 };
 
 describe('AwsApiGateway.build', () => {

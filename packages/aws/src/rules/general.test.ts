@@ -1,4 +1,4 @@
-import { type SerializedRule } from 'terra-graph';
+import { type SerializedRule } from '@terra-graph/core';
 import generalRules from './general.js';
 import { ruleName } from '../namespaces.js';
 

@@ -5,22 +5,22 @@ import {
   NamedRuleRegistry,
   NamedRuleSetRegistry,
   type SerializedRule,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { AwsS3 } from './AwsS3.js';
-import type { AwsS3GraphPluginOptions } from './AwsS3.js';
+import type { S3GraphPluginOptions } from './AwsS3.js';
 
 type SerializedPhaseStep = {
   phase: NamedPhase;
   rules: SerializedRule[];
 };
 
-const buildPhases = (options: AwsS3GraphPluginOptions = {}): SerializedPhaseStep[] => {
+const buildPhases = (options: S3GraphPluginOptions = {}): SerializedPhaseStep[] => {
   const plugin = new AwsS3();
   const result = plugin.build({
     options,
     namedRules: new NamedRuleRegistry(),
     namedRuleSets: new NamedRuleSetRegistry(),
-  } as GraphPluginBuildInput<AwsS3GraphPluginOptions>);
+  } as GraphPluginBuildInput<S3GraphPluginOptions>);
 
   return (result.phases ?? []).map((phase) => ({
     phase: phase.phase,

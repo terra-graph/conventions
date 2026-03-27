@@ -19,6 +19,6 @@ describe('dataflow convention rule sets', () => {
     expect(phases).toHaveLength(1);
     const phaseRuleIds = phases[0].map((rule) => rule.serialize().id);
     expect(phaseRuleIds).toContain('EdgeSemanticLegend');
-    expect(phaseRuleIds.filter((id) => id === 'EdgeDirectionSemantic')).toHaveLength(10);
+    expect(phaseRuleIds.filter((id) => id === 'EdgeDirectionSemantic')).toHaveLength(13);
   });
 });

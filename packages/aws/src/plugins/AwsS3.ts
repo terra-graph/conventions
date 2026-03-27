@@ -5,7 +5,7 @@ import {
   type GraphPluginBuildResult,
   RemoveNode,
   RemoveNodeAndReconnectEdges,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 export type S3GraphPluginOptions = {
   keepResources?: string[];
@@ -16,7 +16,7 @@ const S3_DEFAULT_KEEP_RESOURCES = ['aws_s3_bucket', 'aws_s3_bucket_notification'
 export type S3GraphPluginConstructorOptions = {
   keepResources?: string[];
 };
-
+// TODO: this feels like part of conventions not a usefule plugin
 export class AwsS3 extends GraphPlugin<S3GraphPluginOptions> {
   static id = pluginId(`aws.${AwsS3.name}`);
 
@@ -40,7 +40,7 @@ export class AwsS3 extends GraphPlugin<S3GraphPluginOptions> {
     return {
       phases: [
         {
-          phase: 'main',
+          phase: 'pre',
           rules: [
             new RemoveNodeAndReconnectEdges({
               node: {
@@ -81,7 +81,7 @@ export class AwsS3 extends GraphPlugin<S3GraphPluginOptions> {
           ],
         },
         {
-          phase: 'main',
+          phase: 'pre',
           rules: [
             new RemoveNode({
               node: {
@@ -108,14 +108,14 @@ export class AwsS3 extends GraphPlugin<S3GraphPluginOptions> {
         {
           phase: 'main',
           rules: [
-            new ConvertNodeToEdge({
-              node: {
-                attr: {
-                  key: 'terraform.resource',
-                  eq: 'aws_s3_bucket_notification',
-                },
-              },
-            }),
+            // new ConvertNodeToEdge({
+            //   node: {
+            //     attr: {
+            //       key: 'terraform.resource',
+            //       eq: 'aws_s3_bucket_notification',
+            //     },
+            //   },
+            // }),
           ],
         },
       ],

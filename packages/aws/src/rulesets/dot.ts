@@ -1,4 +1,4 @@
-import { EdgeLegend, NamedRuleSetRegistry, RuleSet } from 'terra-graph';
+import { EdgeLegend, NamedRuleSetRegistry, RuleSet } from '@terra-graph/core';
 import { ruleName, ruleSetName } from '../namespaces.js';
 
 export default new NamedRuleSetRegistry({

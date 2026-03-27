@@ -8,7 +8,7 @@ import {
   NodeProperties,
   RemoveLeafChain,
   RemoveNodeAndReconnectEdges,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 
 export const AWS_IAM_PLUGIN_MODES = ['roles_only', 'roles_policies', 'full'] as const;

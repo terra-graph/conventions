@@ -1,6 +1,6 @@
 import type { Convention } from './conventions/index.js';
 
-export const PACKAGE_NAMESPACE = '@terra-graph-conventions/aws';
+export const PACKAGE_NAMESPACE = '@terra-graph/conventions-aws';
 
 export const pluginId = (pluginName: string): string => `${PACKAGE_NAMESPACE}:plugin:${pluginName}`;
 export const ruleName = (ruleName: string): string => `${PACKAGE_NAMESPACE}:rule:${ruleName}`;

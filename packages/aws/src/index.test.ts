@@ -1,4 +1,4 @@
-import { DotAdapter } from 'terra-graph';
+import { DotAdapter } from '@terra-graph/core';
 import { AwsApiGateway } from './plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
 import { AwsS3 } from './plugins/AwsS3.js';
@@ -11,12 +11,21 @@ import { conventionName, ruleName, ruleSetName } from './namespaces.js';
 import { Convention } from './conventions/index.js';
 import buildRuntimeProvider from './index.js';
 
+const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
+  const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } = runtime;
+  if (!supportedAdapterOperationsRegistry || !plugins || !namedRules || !namedRuleSets || !profiles) {
+    throw new Error('Runtime provider missing expected registries');
+  }
+  return { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles };
+};
+
 describe('aws provider', () => {
   it('shoud expose a complete runtime provider with all registrations', () => {
     const runtime = buildRuntimeProvider();
+    const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
 
-    expect(runtime.supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
-    expect(runtime.plugins.names().sort()).toStrictEqual(
+    expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
+    expect(plugins.names().sort()).toStrictEqual(
       [
         AwsApiGateway.id,
         AwsIamGraphPlugin.id,
@@ -25,7 +34,7 @@ describe('aws provider', () => {
         AwsTransferFamily.id,
       ].sort(),
     );
-    expect(runtime.namedRules.names().sort()).toEqual(
+    expect(namedRules.names().sort()).toEqual(
       [
         ruleName('data.remove'),
         ruleName('log_groups.only_event_bridge'),
@@ -36,19 +45,20 @@ describe('aws provider', () => {
         ...dataFlowConventionRules.names(),
       ].sort(),
     );
-    expect(runtime.namedRuleSets.names().sort()).toEqual(
+    expect(namedRuleSets.names().sort()).toEqual(
       [
         ruleSetName('dot.sqs.dlq'),
         conventionName(Convention.DataFlow, ruleSetName('semantics')),
       ].sort(),
     );
-    expect(runtime.profiles.names()).toEqual([conventionDataFlowDotProfileName]);
+    expect(profiles.names()).toEqual([conventionDataFlowDotProfileName]);
   });
 
   it('shoud aggregate rule registries without losing named registration count', () => {
     const runtime = buildRuntimeProvider();
-    expect(runtime.namedRules.names().length).toBe(17);
-    expect(runtime.namedRuleSets.names().length).toBe(2);
-    expect(runtime.profiles.names().length).toBe(1);
+    const { namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
+    expect(namedRules.names().length).toBe(6);
+    expect(namedRuleSets.names().length).toBe(2);
+    expect(profiles.names().length).toBe(1);
   });
 });

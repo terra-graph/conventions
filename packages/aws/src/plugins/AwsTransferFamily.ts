@@ -9,7 +9,7 @@ import {
   type TgNodeAttributes,
   edgeIdFrom,
   tgNodeIdFrom,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 
 const DEFAULT_EVENT_BUS_ADDRESS = 'aws_cloudwatch_event_bus.default';

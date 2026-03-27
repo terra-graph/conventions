@@ -11,7 +11,7 @@ import {
   type TgNodeAttributes,
   edgeIdFrom,
   tgNodeIdFrom,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 
 class CompressApiGatewayResourcePath extends NodeRule {

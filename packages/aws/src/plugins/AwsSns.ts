@@ -4,7 +4,7 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
-} from 'terra-graph';
+} from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 
 export class AwsSns extends GraphPlugin {

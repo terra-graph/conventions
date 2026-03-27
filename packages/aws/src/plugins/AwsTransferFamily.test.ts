@@ -12,8 +12,7 @@ import {
   NamedRuleSetRegistry,
   type SerializedRule,
   tgNodeIdFrom,
-} from 'terra-graph';
-import { DirectedGraph } from 'graphology';
+} from '@terra-graph/core';
 import { AwsTransferFamily } from './AwsTransferFamily.js';
 
 type SerializedPhaseStep = {
@@ -48,7 +47,7 @@ const buildMainRules = (): BaseRule[] => {
 
 const defaultBusId = tgNodeIdFrom('resource', 'aws_cloudwatch_event_bus.default');
 const buildAdapter = (graph: TgGraph): AdapterOperations => {
-  return new GraphologyAdapter(new DirectedGraph()).withTgGraph(graph);
+  return new GraphologyAdapter().withTgGraph(graph);
 };
 
 describe('AwsTransferFamily.build', () => {

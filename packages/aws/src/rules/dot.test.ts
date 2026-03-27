@@ -1,4 +1,4 @@
-import { type SerializedRule } from 'terra-graph';
+import { type SerializedRule } from '@terra-graph/core';
 import dotRules from './dot.js';
 import { ruleName } from '../namespaces.js';
 

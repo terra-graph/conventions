@@ -1,9 +1,11 @@
 import {
+  DotAdapter,
   NamedRuleRegistry,
   NamedRuleSetRegistry,
-  defaultRuntimeProvider,
-  DotAdapter,
-} from 'terra-graph';
+  NodeDotProperties,
+  RemoveNode,
+  RemoveNodeAndReconnectEdges,
+} from '@terra-graph/core';
 import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
 import { AwsS3 } from '../../../plugins/AwsS3.js';
 import conventionDataFlowDotProfile, {
@@ -15,6 +17,59 @@ import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
 import { Convention } from '../../index.js';
 
+const baseNamedRules = new NamedRuleRegistry({
+  'remove.tfconfig': new RemoveNode({
+    node: {
+      or: [
+        {
+          attr: {
+            key: 'terraform.kind',
+            in: ['local', 'var', 'terraform_data'],
+          },
+        },
+        {
+          attr: {
+            key: 'terraform.resource',
+            in: ['null_resource', 'local_file'],
+          },
+        },
+      ],
+    },
+  }),
+  'reconnect.time_sleep': new RemoveNodeAndReconnectEdges({
+    node: {
+      attr: {
+        key: 'terraform.resource',
+        eq: 'time_sleep',
+      },
+    },
+  }),
+  'remove.childless_modules': new RemoveNode({
+    node: {
+      and: [
+        { attr: { key: 'terraform.kind', eq: 'module' } },
+        { children: { exists: false } },
+      ],
+    },
+  }),
+  'dot.normalise_modules': new NodeDotProperties({
+    options: {
+      peripheries: 0,
+      label: '',
+      height: 0,
+      width: 0,
+    },
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        eq: 'module',
+      },
+    },
+  }),
+});
+
+const baseNamedRuleSets = new NamedRuleSetRegistry({});
+
 describe('dataflow dot profile', () => {
   it('shoud expose namespaced profile metadata and plugin refs', () => {
     const serialized = conventionDataFlowDotProfile.serialize();
@@ -22,12 +77,16 @@ describe('dataflow dot profile', () => {
     expect(serialized.name).toBe(conventionDataFlowDotProfileName);
     expect(serialized.supports).toBe(DotAdapter.name);
     expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual([
-      'pre',
       'main',
+    ]);
+
+    const baseProfile = serialized.usesProfiles?.[0];
+    expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
+      'pre',
       'semantics',
       'main',
     ]);
-    expect(serialized.plugins).toEqual([
+    expect(baseProfile?.plugins).toEqual([
       { plugin: AwsS3.id },
       {
         plugin: AwsIamGraphPlugin.id,
@@ -41,18 +100,26 @@ describe('dataflow dot profile', () => {
 
   it('shoud resolve phase plan with runtime provider registries', () => {
     const runtime = createRuntimeProvider();
+    const runtimeNamedRules = runtime.namedRules;
+    const runtimeNamedRuleSets = runtime.namedRuleSets;
+    const runtimePlugins = runtime.plugins;
+
+    if (!runtimeNamedRules || !runtimeNamedRuleSets || !runtimePlugins) {
+      throw new Error('Runtime provider missing expected registries');
+    }
+
     const namedRules = NamedRuleRegistry.from([
-      defaultRuntimeProvider.namedRules,
-      runtime.namedRules,
+      baseNamedRules,
+      runtimeNamedRules,
     ]);
     const namedRuleSets = NamedRuleSetRegistry.from([
-      defaultRuntimeProvider.namedRuleSets,
-      runtime.namedRuleSets,
+      baseNamedRuleSets,
+      runtimeNamedRuleSets,
     ]);
     const phases = conventionDataFlowDotProfile.resolvePhases(
       namedRules,
       namedRuleSets,
-      runtime.plugins,
+      runtimePlugins,
     );
 
     expect(phases.length).toBeGreaterThan(4);
@@ -65,8 +132,9 @@ describe('dataflow dot profile', () => {
   });
 
   it('shoud reference conventions rules and rule sets from the dataflow profile', () => {
-    const preRules = conventionDataFlowDotProfile.serialize().phases?.[0]?.rules;
-    const mainRules = conventionDataFlowDotProfile.serialize().phases?.[1]?.rules;
+    const baseProfile = conventionDataFlowDotProfile.serialize().usesProfiles?.[0];
+    const preRules = baseProfile?.phases?.[0]?.rules;
+    const mainRules = conventionDataFlowDotProfile.serialize().phases?.[0]?.rules;
 
     expect(preRules).toEqual(
       expect.arrayContaining([
@@ -83,8 +151,6 @@ describe('dataflow dot profile', () => {
     expect(dataFlowConventionRuleSet.names()).toContain(
       conventionName(Convention.DataFlow, ruleSetName('semantics')),
     );
-    expect(dataFlowConventionRules.names()).toContain(
-      conventionName(Convention.DataFlow, ruleName('triggers.async_sources_to_consumers')),
-    );
+    expect(dataFlowConventionRules.names()).toEqual([]);
   });
 });

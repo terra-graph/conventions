@@ -33,7 +33,11 @@ describe('dot rule sets', () => {
       colour: '#c20202',
       title: 'SQS dead letters / failures',
     });
-    expect(phases[0][1].serialize().config.edge).toMatchObject({
+    const edgeLegend = phases[0][1].serialize();
+    if (!('edge' in edgeLegend.config)) {
+      throw new Error('Expected EdgeLegend to provide an edge config');
+    }
+    expect(edgeLegend.config.edge).toMatchObject({
       from: {
         attr: { key: 'terraform.resource', eq: 'aws_sqs_queue' },
       },
