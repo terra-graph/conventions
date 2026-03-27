@@ -15,3 +15,5 @@ import {
   ...
 } from '@terra-graph/conventions-core';
 ```
+
+This package currently ships placeholder, serialization-safe convention assets and a manifest contract for future expansion.
