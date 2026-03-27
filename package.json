@@ -1,5 +1,5 @@
 {
-  "name": "terra-graph-conventions",
+  "name": "@terra-graph/conventions",
   "version": "0.0.0",
   "private": true,
   "packageManager": "yarn@1.22.22",
