@@ -1,5 +1,11 @@
 module.exports = ({ packageDir, packageName, scope }) => ({
-  branches: ['main'],
+  branches: [
+    'main',
+    {
+      "name": "rc/*",
+      "prerelease": "rc"
+    }
+  ],
   extends: ['semantic-release-monorepo'],
   tagFormat: `${packageName}@\${version}`,
   plugins: [

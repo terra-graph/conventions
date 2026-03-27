@@ -5,3 +5,4 @@ dist
 packages/**/dist
 packages/**/coverage
 .nvmrc
+*-error.log
