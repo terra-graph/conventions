@@ -12,6 +12,8 @@ jobs:
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
+      has_core: ${{ steps.detect.outputs.has_core }}
+      has_other: ${{ steps.detect.outputs.has_other }}
 
     steps:
       - name: Checkout
@@ -34,18 +36,74 @@ jobs:
           if [ -z "$CHANGED" ]; then
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             echo 'has_changes=false' >> "$GITHUB_OUTPUT"
+            echo 'has_core=false' >> "$GITHUB_OUTPUT"
+            echo 'has_other=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          JSON=$(printf '%s\n' "$CHANGED" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph-conventions/" + .)})}')
-          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+          if printf '%s\n' "$CHANGED" | grep -qx 'core'; then
+            echo 'has_core=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'has_core=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          NON_CORE=$(printf '%s\n' "$CHANGED" | grep -vx 'core' || true)
+          if [ -z "$NON_CORE" ]; then
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'has_other=false' >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "$NON_CORE" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo 'has_other=true' >> "$GITHUB_OUTPUT"
+          fi
+
           echo 'has_changes=true' >> "$GITHUB_OUTPUT"
 
-  release:
-    name: Release ${{ matrix.workspace }}
+  release-core:
+    name: Release @terra-graph/conventions-core
     runs-on: ubuntu-latest
     needs: detect-packages
-    if: needs.detect-packages.outputs.has_changes == 'true'
+    if: needs.detect-packages.outputs.has_core == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          registry-url: 'https://registry.npmjs.org'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint:ci
+
+      - name: Build
+        run: yarn build
+
+      - name: Test
+        run: yarn test
+
+      - name: Semantic release
+        run: yarn workspace "@terra-graph/conventions-core" semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+
+  release-others:
+    name: Release ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+    needs:
+      - detect-packages
+      - release-core
+    if: needs.detect-packages.outputs.has_other == 'true' && (needs.release-core.result == 'success' || needs.release-core.result == 'skipped')
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-packages.outputs.matrix) }}
@@ -56,13 +114,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone terra-graph sibling
-        run: git clone --depth 1 https://github.com/kevbaldwyn/terra-graph.git ../terra-graph
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           registry-url: 'https://registry.npmjs.org'
           cache: yarn
 
