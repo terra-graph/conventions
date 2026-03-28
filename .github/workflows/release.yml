@@ -43,12 +43,6 @@ jobs:
           echo "Changed files:"
           printf '%s\n' "$CHANGED_FILES"
           CHANGED=$(printf '%s\n' "$CHANGED_FILES" | awk -F/ '/^packages\/[^/]+\// { print $2 }' | sort -u)
-          GLOBAL_CHANGED=$(printf '%s\n' "$CHANGED_FILES" | awk -F/ '!/^packages\// { print }' | head -n 1)
-
-          if [ -n "$GLOBAL_CHANGED" ]; then
-            CHANGED=$(ls -1 packages | sort -u)
-          fi
-
           if [ -z "$CHANGED" ]; then
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             echo 'has_changes=false' >> "$GITHUB_OUTPUT"
