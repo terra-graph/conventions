@@ -89,7 +89,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Lint
-        run: yarn workspace @terra-graph/conventions-core lint:ci
+        run: yarn lint:ci
 
       - name: Build
         run: yarn workspace @terra-graph/conventions-core build
