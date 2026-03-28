@@ -1,3 +1,13 @@
+## [1.0.0-rc.4](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.3...@terra-graph/conventions-core@1.0.0-rc.4) (2026-03-28)
+
+### Bug Fixes
+
+* release ([80c26e0](https://github.com/terra-graph/conventions/commit/80c26e0c2bd43cd965c9a6537b6bf6fbb8be72cf))
+* release ([0e72f68](https://github.com/terra-graph/conventions/commit/0e72f687704df3a0edf1b4fb54b04e123030cd40))
+* release ([f996d7b](https://github.com/terra-graph/conventions/commit/f996d7b29190acfd575c2f01df6ac86f11f97871))
+* release ([ca0daff](https://github.com/terra-graph/conventions/commit/ca0daffdb70c7a5fe471114d5b7e03c4863fbc21))
+* release ([9c60c78](https://github.com/terra-graph/conventions/commit/9c60c780ae91fbde08f4d121871c73e4142dc910))
+
 ## [1.0.0-rc.3](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.2...@terra-graph/conventions-core@1.0.0-rc.3) (2026-03-28)
 
 ### Bug Fixes
