@@ -103,7 +103,7 @@ jobs:
         run: yarn workspace @terra-graph/conventions-core test
 
       - name: Semantic release
-        run: yarn semantic-release -e packages/core/.releaserc.cjs
+        run: yarn semantic-release -e ./packages/core/.releaserc.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -146,7 +146,7 @@ jobs:
         run: yarn workspace "${{ matrix.workspace }}" test
 
       - name: Semantic release
-        run: yarn semantic-release -e packages/${{ matrix.package }}/.releaserc.cjs
+        run: yarn semantic-release -e ./packages/${{ matrix.package }}/.releaserc.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
