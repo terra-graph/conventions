@@ -103,7 +103,8 @@ jobs:
           fi
           TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
           printf '%s' "$TOKEN" | sha256sum
-          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > ~/.npmrc
+          CONFIG_PATH="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > "$CONFIG_PATH"
           npm whoami
 
       - name: Lint
@@ -120,6 +121,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
   release-others:
@@ -159,7 +161,8 @@ jobs:
           fi
           TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
           printf '%s' "$TOKEN" | sha256sum
-          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > ~/.npmrc
+          CONFIG_PATH="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > "$CONFIG_PATH"
           npm whoami
 
       - name: Lint
@@ -176,4 +179,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
