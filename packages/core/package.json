@@ -1,13 +1,17 @@
 {
   "name": "@terra-graph/conventions-core",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Core convention assets for terra-graph",
   "license": "MIT",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "type": "module",
-  "files": ["dist", "CHANGELOG.md", "README.md"],
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
