@@ -1,4 +1,5 @@
 import { DotAdapter } from '@terra-graph/core';
+import { conventionDataFlowBaseProfileName } from './conventions/dataflow/profiles/base.js';
 import { conventionDataFlowDotProfileName } from './conventions/dataflow/profiles/dot.js';
 import dataFlowConventionRules from './conventions/dataflow/rules.js';
 import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
@@ -50,17 +51,20 @@ describe('aws provider', () => {
     expect(namedRuleSets.names().sort()).toEqual(
       [
         ruleSetName('dot.sqs.dlq'),
+        conventionName(Convention.DataFlow, ruleSetName('cleanup')),
         conventionName(Convention.DataFlow, ruleSetName('semantics')),
       ].sort(),
     );
-    expect(profiles.names()).toEqual([conventionDataFlowDotProfileName]);
+    expect(profiles.names().sort()).toEqual(
+      [conventionDataFlowBaseProfileName, conventionDataFlowDotProfileName].sort(),
+    );
   });
 
   it('shoud aggregate rule registries without losing named registration count', () => {
     const runtime = buildRuntimeProvider();
     const { namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
     expect(namedRules.names().length).toBe(6);
-    expect(namedRuleSets.names().length).toBe(2);
-    expect(profiles.names().length).toBe(1);
+    expect(namedRuleSets.names().length).toBe(3);
+    expect(profiles.names().length).toBe(2);
   });
 });

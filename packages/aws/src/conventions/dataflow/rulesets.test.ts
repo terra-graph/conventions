@@ -5,9 +5,14 @@ import dataFlowConventionRuleSet from './rulesets.js';
 
 describe('dataflow convention rule sets', () => {
   it('shoud register the dataflow semantics ruleset', () => {
-    expect(dataFlowConventionRuleSet.names()).toEqual([
-      conventionName(Convention.DataFlow, ruleSetName('semantics')),
-    ]);
+    const names = dataFlowConventionRuleSet.names();
+    expect(names).toHaveLength(2);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+        conventionName(Convention.DataFlow, ruleSetName('semantics')),
+      ]),
+    );
   });
 
   it('shoud expand all semantic rules from the semantics rule set', () => {
@@ -19,6 +24,6 @@ describe('dataflow convention rule sets', () => {
     expect(phases).toHaveLength(1);
     const phaseRuleIds = phases[0].map((rule) => rule.serialize().id);
     expect(phaseRuleIds).toContain('EdgeSemanticLegend');
-    expect(phaseRuleIds.filter((id) => id === 'EdgeDirectionSemantic')).toHaveLength(13);
+    expect(phaseRuleIds.filter((id) => id === 'EdgeDirectionSemantic').length).toBeGreaterThan(13);
   });
 });

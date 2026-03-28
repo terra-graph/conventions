@@ -74,7 +74,7 @@ export default new Profile(conventionDataFlowBaseProfileName, {
     {
       plugin: AwsIamGraphPlugin.id,
       options: { mode: 'full', removeOrphans: true },
-    }, // fine
+    },
     // { plugin: 'aws.iam', options: { mode: 'full' } },
     // {
     //   plugin: 'aws.iam',

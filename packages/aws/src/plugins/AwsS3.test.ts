@@ -33,7 +33,7 @@ describe('AwsS3.build', () => {
     const phases = buildPhases();
 
     expect(phases).toHaveLength(3);
-    expect(phases.every((phase) => phase.phase === 'main')).toBe(true);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual(['pre', 'pre', 'main']);
     expect(phases[0]?.rules[0]).toStrictEqual({
       id: 'RemoveNodeAndReconnectEdges',
       config: {
@@ -80,17 +80,7 @@ describe('AwsS3.build', () => {
         },
       },
     });
-    expect(phases[2]?.rules[0]).toStrictEqual({
-      id: 'ConvertNodeToEdge',
-      config: {
-        node: {
-          attr: {
-            key: 'terraform.resource',
-            eq: 'aws_s3_bucket_notification',
-          },
-        },
-      },
-    });
+    expect(phases[2]?.rules).toHaveLength(0);
   });
 
   it('shoud keep custom resources when keepResources is configured', () => {

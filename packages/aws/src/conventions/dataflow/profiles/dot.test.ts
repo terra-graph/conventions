@@ -77,6 +77,7 @@ describe('dataflow dot profile', () => {
     expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
       'pre',
       'semantics',
+      'cleanup',
       'main',
     ]);
     expect(baseProfile?.plugins).toEqual([
@@ -112,9 +113,6 @@ describe('dataflow dot profile', () => {
     expect(phases.length).toBeGreaterThan(4);
     expect(
       phases.map((rules) => rules.some((rule) => rule.serialize().id === 'EdgeLegend')),
-    ).toContain(true);
-    expect(
-      phases.map((rules) => rules.some((rule) => rule.serialize().id === 'ConvertNodeToEdge')),
     ).toContain(true);
   });
 

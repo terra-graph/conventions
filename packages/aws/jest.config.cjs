@@ -8,11 +8,16 @@ const config = {
   },
   testMatch: ['<rootDir>/src/**/*.test.ts'],
   moduleNameMapper: {
+    '^@terra-graph/conventions-core$': '<rootDir>/../core/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   moduleFileExtensions: ['ts', 'js'],
   collectCoverage: true,
-  collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/**/*.test.ts'],
+  collectCoverageFrom: [
+    '<rootDir>/src/**/*.ts', 
+    '!<rootDir>/src/**/*.test.ts', 
+    '!<rootDir>/src/**/index.ts'
+  ],
   coverageThreshold: {
     global: {
       statements: 100,

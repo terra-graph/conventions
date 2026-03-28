@@ -2,7 +2,7 @@ import { profileName } from './namespaces.js';
 import { coreBase } from './profiles.js';
 
 describe('coreBase profile', () => {
-  it('should expose a namespaced base profile with expected phases', () => {
+  it('should expose a namespaced base profile with expected phases.', () => {
     const serialized = coreBase.serialize();
 
     expect(serialized.name).toBe(profileName('base'));
