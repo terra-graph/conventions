@@ -1,7 +1,7 @@
-import dataFlowConventionRuleSet from './rulesets.js';
-import dataFlowConventionRules from './rules.js';
-import { Convention } from '../index.js';
 import { conventionName, ruleSetName } from '../../namespaces.js';
+import { Convention } from '../index.js';
+import dataFlowConventionRules from './rules.js';
+import dataFlowConventionRuleSet from './rulesets.js';
 
 describe('dataflow convention rule sets', () => {
   it('shoud register the dataflow semantics ruleset', () => {

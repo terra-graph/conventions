@@ -6,12 +6,12 @@ import {
   ProfileRegistry,
   type RuntimeProvider,
 } from '@terra-graph/core';
-import conventionDataFlowDotProfile, {
-  conventionDataFlowDotProfileName,
-} from './conventions/dataflow/profiles/dot.js';
 import conventionDataFlowBaseProfile, {
   conventionDataFlowBaseProfileName,
 } from './conventions/dataflow/profiles/base.js';
+import conventionDataFlowDotProfile, {
+  conventionDataFlowDotProfileName,
+} from './conventions/dataflow/profiles/dot.js';
 import dataFlowConventionRules from './conventions/dataflow/rules.js';
 import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
 import { AwsApiGateway } from './plugins/AwsApiGateway.js';

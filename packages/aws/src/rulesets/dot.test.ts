@@ -1,6 +1,6 @@
 import { ruleName, ruleSetName } from '../namespaces.js';
-import dotRuleSet from './dot.js';
 import dotRules from '../rules/dot.js';
+import dotRuleSet from './dot.js';
 
 describe('dot rule sets', () => {
   it('shoud expose the SQS dead-letter rule set', () => {

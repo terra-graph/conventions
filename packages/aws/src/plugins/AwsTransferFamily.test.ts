@@ -1,16 +1,16 @@
 import {
   type AdapterOperations,
-  asEdgeId,
-  asNodeId,
-  GraphologyAdapter,
   type BaseRule,
   type GraphPluginBuildInput,
+  GraphologyAdapter,
   type NamedPhase,
-  TG_SCHEMA_VERSION,
-  TgGraph,
   NamedRuleRegistry,
   NamedRuleSetRegistry,
   type SerializedRule,
+  TG_SCHEMA_VERSION,
+  type TgGraph,
+  asEdgeId,
+  asNodeId,
   tgNodeIdFrom,
 } from '@terra-graph/core';
 import { AwsTransferFamily } from './AwsTransferFamily.js';
@@ -43,6 +43,22 @@ const buildMainRules = (): BaseRule[] => {
   } as GraphPluginBuildInput);
 
   return (result.phases?.[1]?.rules ?? []).map((rule) => rule as BaseRule);
+};
+
+const getConnectorRule = (): BaseRule => {
+  const rule = buildMainRules()[0];
+  if (!rule) {
+    throw new Error('Missing ConnectTransferConnectorToDefaultEventBus rule');
+  }
+  return rule;
+};
+
+const getRewireRule = (): BaseRule => {
+  const rule = buildMainRules()[1];
+  if (!rule) {
+    throw new Error('Missing RewireTransferEventRuleToDefaultEventBus rule');
+  }
+  return rule;
 };
 
 const defaultBusId = tgNodeIdFrom('resource', 'aws_cloudwatch_event_bus.default');
@@ -91,7 +107,7 @@ describe('AwsTransferFamily.build', () => {
       },
       edges: [],
     });
-    const connectorRule = buildMainRules()[0]!;
+    const connectorRule = getConnectorRule();
     const connectorNode = adapter.getNodeAttributes(connectorId);
     if (!connectorNode) {
       throw new Error('Missing aws_transfer_connector node');
@@ -124,7 +140,7 @@ describe('AwsTransferFamily.build', () => {
       },
       edges: [],
     });
-    const rewireRule = buildMainRules()[1]!;
+    const rewireRule = getRewireRule();
     const ruleNode = adapter.getNodeAttributes(ruleId);
     if (!ruleNode) {
       throw new Error('Missing aws_cloudwatch_event_rule node');
@@ -179,7 +195,7 @@ describe('AwsTransferFamily.build', () => {
         },
       ],
     });
-    const rewireRule = buildMainRules()[1]!;
+    const rewireRule = getRewireRule();
     const ruleNode = adapter.getNodeAttributes(ruleId);
     if (!ruleNode) {
       throw new Error('Missing aws_cloudwatch_event_rule node');
@@ -229,7 +245,7 @@ describe('AwsTransferFamily.build', () => {
         },
       ],
     });
-    const rewireRule = buildMainRules()[1]!;
+    const rewireRule = getRewireRule();
     const ruleNode = adapter.getNodeAttributes(ruleId);
     if (!ruleNode) {
       throw new Error('Missing aws_cloudwatch_event_rule node');
@@ -262,7 +278,7 @@ describe('AwsTransferFamily.build', () => {
       },
       edges: [],
     });
-    const connectorRule = buildMainRules()[0]!;
+    const connectorRule = getConnectorRule();
     const eventRuleNode = adapter.getNodeAttributes(eventRuleId);
     if (!eventRuleNode) {
       throw new Error('Missing aws_cloudwatch_event_rule node');
@@ -293,7 +309,7 @@ describe('AwsTransferFamily.build', () => {
       },
       edges: [],
     });
-    const rewireRule = buildMainRules()[1]!;
+    const rewireRule = getRewireRule();
     const eventRuleNode = adapter.getNodeAttributes(eventRuleId);
     if (!eventRuleNode) {
       throw new Error('Missing aws_cloudwatch_event_rule node');

@@ -357,7 +357,9 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow(`${AwsIamGraphPlugin.id} options.mode must be one of: roles_only, roles_policies, full`);
+    ).toThrow(
+      `${AwsIamGraphPlugin.id} options.mode must be one of: roles_only, roles_policies, full`,
+    );
 
     expect(() =>
       plugin.build({
@@ -409,11 +411,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(3);
-    expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
-      'main',
-      'cleanup',
-    ]);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual(['normalize', 'main', 'cleanup']);
     expect(phases[1]?.rules).toHaveLength(1);
     expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
     expect(phases[2]?.rules).toHaveLength(9);

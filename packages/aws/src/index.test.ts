@@ -1,19 +1,26 @@
 import { DotAdapter } from '@terra-graph/core';
+import { conventionDataFlowDotProfileName } from './conventions/dataflow/profiles/dot.js';
+import dataFlowConventionRules from './conventions/dataflow/rules.js';
+import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
+import { Convention } from './conventions/index.js';
+import buildRuntimeProvider from './index.js';
+import { conventionName, ruleName, ruleSetName } from './namespaces.js';
 import { AwsApiGateway } from './plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
 import { AwsS3 } from './plugins/AwsS3.js';
 import { AwsSns } from './plugins/AwsSns.js';
 import { AwsTransferFamily } from './plugins/AwsTransferFamily.js';
-import { conventionDataFlowDotProfileName } from './conventions/dataflow/profiles/dot.js';
-import dataFlowConventionRules from './conventions/dataflow/rules.js';
-import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
-import { conventionName, ruleName, ruleSetName } from './namespaces.js';
-import { Convention } from './conventions/index.js';
-import buildRuntimeProvider from './index.js';
 
 const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
-  const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } = runtime;
-  if (!supportedAdapterOperationsRegistry || !plugins || !namedRules || !namedRuleSets || !profiles) {
+  const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } =
+    runtime;
+  if (
+    !supportedAdapterOperationsRegistry ||
+    !plugins ||
+    !namedRules ||
+    !namedRuleSets ||
+    !profiles
+  ) {
     throw new Error('Runtime provider missing expected registries');
   }
   return { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles };
@@ -22,17 +29,12 @@ const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
 describe('aws provider', () => {
   it('shoud expose a complete runtime provider with all registrations', () => {
     const runtime = buildRuntimeProvider();
-    const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
+    const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } =
+      assertRuntime(runtime);
 
     expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
     expect(plugins.names().sort()).toStrictEqual(
-      [
-        AwsApiGateway.id,
-        AwsIamGraphPlugin.id,
-        AwsS3.id,
-        AwsSns.id,
-        AwsTransferFamily.id,
-      ].sort(),
+      [AwsApiGateway.id, AwsIamGraphPlugin.id, AwsS3.id, AwsSns.id, AwsTransferFamily.id].sort(),
     );
     expect(namedRules.names().sort()).toEqual(
       [

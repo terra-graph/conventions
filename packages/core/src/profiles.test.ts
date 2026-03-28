@@ -1,5 +1,5 @@
-import { coreBase } from './profiles.js';
 import { profileName } from './namespaces.js';
+import { coreBase } from './profiles.js';
 
 describe('coreBase profile', () => {
   it('should expose a namespaced base profile with expected phases', () => {

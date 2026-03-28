@@ -1,6 +1,6 @@
-import { type SerializedRule } from '@terra-graph/core';
-import dotRules from './dot.js';
+import type { SerializedRule } from '@terra-graph/core';
 import { ruleName } from '../namespaces.js';
+import dotRules from './dot.js';
 
 const serialize = (name: string): SerializedRule => {
   return dotRules.resolve(name).serialize();

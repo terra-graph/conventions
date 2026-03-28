@@ -1,9 +1,9 @@
-import { Profile, RemoveNode } from '@terra-graph/core';
 import { coreBase } from '@terra-graph/conventions-core';
+import { Profile, RemoveNode } from '@terra-graph/core';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
-import { Convention } from '../../index.js';
-import { AwsS3 } from '../../../plugins/AwsS3.js';
 import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
+import { AwsS3 } from '../../../plugins/AwsS3.js';
+import { Convention } from '../../index.js';
 
 export const conventionDataFlowBaseProfileName = conventionName(
   Convention.DataFlow,

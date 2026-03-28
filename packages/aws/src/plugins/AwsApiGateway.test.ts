@@ -1,17 +1,17 @@
 import {
   type AdapterOperations,
-  asEdgeId,
-  asNodeId,
-  GraphologyAdapter,
   type BaseRule,
   type GraphPluginBuildInput,
+  GraphologyAdapter,
   type NamedPhase,
-  type NodeId,
-  TG_SCHEMA_VERSION,
-  TgGraph,
   NamedRuleRegistry,
   NamedRuleSetRegistry,
+  type NodeId,
   type SerializedRule,
+  TG_SCHEMA_VERSION,
+  type TgGraph,
+  asEdgeId,
+  asNodeId,
   tgNodeIdFrom,
 } from '@terra-graph/core';
 import { AwsApiGateway } from './AwsApiGateway.js';
@@ -60,12 +60,7 @@ describe('AwsApiGateway.build', () => {
     const phases = buildPhases();
 
     expect(phases).toHaveLength(4);
-    expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'main',
-      'main',
-      'main',
-      'main',
-    ]);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual(['main', 'main', 'main', 'main']);
     expect(phases[0]?.rules).toHaveLength(1);
     expect(phases[0]?.rules[0]).toStrictEqual({
       id: 'RemoveNode',
@@ -113,10 +108,7 @@ describe('AwsApiGateway.build', () => {
     const resourceChildId = asNodeId('resource.aws_api_gateway_resource.users');
     const rootId = asNodeId('resource.other.parent');
     const methodNodeId = asNodeId('resource.aws_api_gateway_method.get_user');
-    const expectedCompressedId = tgNodeIdFrom(
-      'resource',
-      'aws_api_gateway_resource.users/api',
-    );
+    const expectedCompressedId = tgNodeIdFrom('resource', 'aws_api_gateway_resource.users/api');
     const adapter = buildAdapter({
       schemaVersion: TG_SCHEMA_VERSION,
       description: {},
@@ -275,7 +267,9 @@ describe('AwsApiGateway.build', () => {
     expect(updated).toBe(adapter);
     expect(updated.nodeIds()).toContain(nonApiParentId);
     expect(updated.nodeIds()).toContain(restApiId);
-    expect(updated.nodeIds()).not.toContain(tgNodeIdFrom('resource', 'aws_api_gateway_resource.blank'));
+    expect(updated.nodeIds()).not.toContain(
+      tgNodeIdFrom('resource', 'aws_api_gateway_resource.blank'),
+    );
   });
 
   it('shoud do nothing when CompressApiGatewayResourcePath.apply is not matched', () => {
@@ -378,19 +372,17 @@ describe('AwsApiGateway.build', () => {
 
     const callCounts = new Map<NodeId, number>();
     const getNodeAttributes = adapter.getNodeAttributes.bind(adapter);
-    const spy = jest
-      .spyOn(adapter, 'getNodeAttributes')
-      .mockImplementation((nodeId) => {
-        if (nodeId === parentId) {
-          const calls = (callCounts.get(nodeId) ?? 0) + 1;
-          callCounts.set(nodeId, calls);
-          if (calls === 1) {
-            return getNodeAttributes(nodeId);
-          }
-          return undefined;
+    const spy = jest.spyOn(adapter, 'getNodeAttributes').mockImplementation((nodeId) => {
+      if (nodeId === parentId) {
+        const calls = (callCounts.get(nodeId) ?? 0) + 1;
+        callCounts.set(nodeId, calls);
+        if (calls === 1) {
+          return getNodeAttributes(nodeId);
         }
-        return getNodeAttributes(nodeId);
-      });
+        return undefined;
+      }
+      return getNodeAttributes(nodeId);
+    });
 
     const restNode = adapter.getNodeAttributes(restApiId);
     if (!restNode) {
@@ -469,15 +461,12 @@ describe('AwsApiGateway.build', () => {
     const updated = compressRule.apply(restApiId, restNode, adapter);
     spy.mockRestore();
 
-    const expectedCompressedId = tgNodeIdFrom(
-      'resource',
-      `aws_api_gateway_resource.${parentId}`,
-    );
+    const expectedCompressedId = tgNodeIdFrom('resource', `aws_api_gateway_resource.${parentId}`);
     expect(updated.nodeIds()).toContain(expectedCompressedId);
     expect(updated.getNodeAttributes(expectedCompressedId)).toMatchObject({
       terraform: {
         address: `aws_api_gateway_resource.${parentId}`,
-        name: `resource.aws_api_gateway_resource.api`,
+        name: 'resource.aws_api_gateway_resource.api',
       },
     });
     expect(updated).not.toBe(adapter);

@@ -6,16 +6,14 @@ import {
   RemoveNode,
   RemoveNodeAndReconnectEdges,
 } from '@terra-graph/core';
-import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
-import { AwsS3 } from '../../../plugins/AwsS3.js';
-import conventionDataFlowDotProfile, {
-  conventionDataFlowDotProfileName,
-} from './dot.js';
-import dataFlowConventionRuleSet from '../rulesets.js';
-import dataFlowConventionRules from '../rules.js';
 import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
+import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
+import { AwsS3 } from '../../../plugins/AwsS3.js';
 import { Convention } from '../../index.js';
+import dataFlowConventionRules from '../rules.js';
+import dataFlowConventionRuleSet from '../rulesets.js';
+import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
 
 const baseNamedRules = new NamedRuleRegistry({
   'remove.tfconfig': new RemoveNode({
@@ -46,10 +44,7 @@ const baseNamedRules = new NamedRuleRegistry({
   }),
   'remove.childless_modules': new RemoveNode({
     node: {
-      and: [
-        { attr: { key: 'terraform.kind', eq: 'module' } },
-        { children: { exists: false } },
-      ],
+      and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],
     },
   }),
   'dot.normalise_modules': new NodeDotProperties({
@@ -76,9 +71,7 @@ describe('dataflow dot profile', () => {
 
     expect(serialized.name).toBe(conventionDataFlowDotProfileName);
     expect(serialized.supports).toBe(DotAdapter.name);
-    expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual([
-      'main',
-    ]);
+    expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['main']);
 
     const baseProfile = serialized.usesProfiles?.[0];
     expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
@@ -108,14 +101,8 @@ describe('dataflow dot profile', () => {
       throw new Error('Runtime provider missing expected registries');
     }
 
-    const namedRules = NamedRuleRegistry.from([
-      baseNamedRules,
-      runtimeNamedRules,
-    ]);
-    const namedRuleSets = NamedRuleSetRegistry.from([
-      baseNamedRuleSets,
-      runtimeNamedRuleSets,
-    ]);
+    const namedRules = NamedRuleRegistry.from([baseNamedRules, runtimeNamedRules]);
+    const namedRuleSets = NamedRuleSetRegistry.from([baseNamedRuleSets, runtimeNamedRuleSets]);
     const phases = conventionDataFlowDotProfile.resolvePhases(
       namedRules,
       namedRuleSets,
