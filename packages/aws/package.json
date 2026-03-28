@@ -32,6 +32,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@terra-graph/conventions-core": "0.0.0-development"
+    "@terra-graph/conventions-core": "^1.0.0-rc.1"
   }
 }

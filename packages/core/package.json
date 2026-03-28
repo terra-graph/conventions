@@ -1,6 +1,6 @@
 {
   "name": "@terra-graph/conventions-core",
-  "version": "0.0.0-development",
+  "version": "1.0.0-rc.1",
   "description": "Core convention assets for terra-graph",
   "license": "MIT",
   "main": "./dist/cjs/index.js",
