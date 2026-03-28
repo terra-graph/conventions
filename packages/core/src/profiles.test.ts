@@ -1,0 +1,16 @@
+import { coreBase } from './profiles.js';
+import { profileName } from './namespaces.js';
+
+describe('coreBase profile', () => {
+  it('should expose a namespaced base profile with expected phases', () => {
+    const serialized = coreBase.serialize();
+
+    expect(serialized.name).toBe(profileName('base'));
+    expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['pre']);
+    expect(serialized.phases?.[0]?.rules).toEqual([
+      { namedRule: 'remove.tfconfig' },
+      { namedRule: 'reconnect.time_sleep' },
+      { namedRule: 'remove.childless_modules' },
+    ]);
+  });
+});
