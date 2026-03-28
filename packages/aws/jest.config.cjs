@@ -14,9 +14,9 @@ const config = {
   moduleFileExtensions: ['ts', 'js'],
   collectCoverage: true,
   collectCoverageFrom: [
-    '<rootDir>/src/**/*.ts', 
-    '!<rootDir>/src/**/*.test.ts', 
-    '!<rootDir>/src/**/index.ts'
+    '<rootDir>/src/**/*.ts',
+    '!<rootDir>/src/**/*.test.ts',
+    '!<rootDir>/src/**/index.ts',
   ],
   coverageThreshold: {
     global: {
