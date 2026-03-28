@@ -103,7 +103,7 @@ jobs:
         run: yarn workspace @terra-graph/conventions-core test
 
       - name: Semantic release
-        run: yarn workspace @terra-graph/conventions-core semantic-release
+        run: yarn semantic-release -e packages/core/.releaserc.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -140,13 +140,13 @@ jobs:
         run: yarn lint:ci
 
       - name: Build
-        run: yarn build
+        run: yarn workspace "${{ matrix.workspace }}" build
 
       - name: Test
-        run: yarn test
+        run: yarn workspace "${{ matrix.workspace }}" test
 
       - name: Semantic release
-        run: yarn workspace "${{ matrix.workspace }}" semantic-release
+        run: yarn semantic-release -e packages/${{ matrix.package }}/.releaserc.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
