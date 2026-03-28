@@ -1,3 +1,21 @@
+## 1.0.0-rc.1 (2026-03-28)
+
+### Features
+
+* add aws package ([2eaadc9](https://github.com/terra-graph/conventions/commit/2eaadc93f45ac1a9a1cd75f11b3652c9b838b37d))
+* add initial aws package ([8700de3](https://github.com/terra-graph/conventions/commit/8700de3984fcc75368864bbe615a38645c404d1b))
+* added core package ([1bdc6e7](https://github.com/terra-graph/conventions/commit/1bdc6e7aefc2813e5fb6650bd008a0bf31295719))
+
+### Bug Fixes
+
+* force release ([38320d9](https://github.com/terra-graph/conventions/commit/38320d95672062fba3dd62500f8653c67b09bb45))
+* force release ([f625ac0](https://github.com/terra-graph/conventions/commit/f625ac0a95083f25df1db7155c08d2d1544c4f2b))
+* force release ([955c8b6](https://github.com/terra-graph/conventions/commit/955c8b66eebbadc6663b771f12cad85830e29b59))
+* force release ([f53250c](https://github.com/terra-graph/conventions/commit/f53250ca7b027d453a63731782d627d24cfc2de9))
+* force release ([fd1b399](https://github.com/terra-graph/conventions/commit/fd1b3998f3015b791981ef4a99b253855938ef92))
+* force release ([b3c459b](https://github.com/terra-graph/conventions/commit/b3c459b97b1f6c9028a7a173a6a8a0ad0e6b9f20))
+* force release ([1b05e2b](https://github.com/terra-graph/conventions/commit/1b05e2b9e03f76d7fe22a80a2e80f519ac320bc6))
+
 # Changelog
 
 All notable changes to this package will be documented in this file.
