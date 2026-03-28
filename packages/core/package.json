@@ -11,11 +11,7 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "type": "module",
-  "files": [
-    "dist",
-    "CHANGELOG.md",
-    "README.md"
-  ],
+  "files": ["dist", "CHANGELOG.md", "README.md"],
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
