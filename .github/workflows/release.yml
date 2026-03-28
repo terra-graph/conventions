@@ -39,6 +39,11 @@ jobs:
           fi
 
           CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}")
+          if [ -z "$CHANGED_FILES" ] && git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$CHANGED_FILES"
           CHANGED=$(printf '%s\n' "$CHANGED_FILES" | awk -F/ '/^packages\/[^/]+\// { print $2 }' | sort -u)
           GLOBAL_CHANGED=$(printf '%s\n' "$CHANGED_FILES" | awk -F/ '!/^packages\// { print }' | head -n 1)
 
