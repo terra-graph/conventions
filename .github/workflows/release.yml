@@ -59,7 +59,7 @@ jobs:
 
           CORE=$(printf '%s\n' "$CHANGED" | grep -x 'core' || true)
           NON_CORE=$(printf '%s\n' "$CHANGED" | grep -vx 'core' || true)
-          ORDERED=$(printf '%s\n' "$CORE\n$NON_CORE" | sed '/^$/d')
+          ORDERED=$(printf '%s\n' "$CORE" "$NON_CORE" | sed '/^$/d')
           JSON=$(printf '%s\n' "$ORDERED" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
           echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
 
