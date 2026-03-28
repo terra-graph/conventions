@@ -19,8 +19,6 @@ jobs:
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
-      has_core: ${{ steps.detect.outputs.has_core }}
-      has_other: ${{ steps.detect.outputs.has_other }}
 
     steps:
       - name: Checkout
@@ -59,95 +57,23 @@ jobs:
             exit 0
           fi
 
-          if printf '%s\n' "$CHANGED" | grep -qx 'core'; then
-            echo 'has_core=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'has_core=false' >> "$GITHUB_OUTPUT"
-          fi
-
+          CORE=$(printf '%s\n' "$CHANGED" | grep -x 'core' || true)
           NON_CORE=$(printf '%s\n' "$CHANGED" | grep -vx 'core' || true)
-          if [ -z "$NON_CORE" ]; then
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            echo 'has_other=false' >> "$GITHUB_OUTPUT"
-          else
-            JSON=$(printf '%s\n' "$NON_CORE" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
-            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
-            echo 'has_other=true' >> "$GITHUB_OUTPUT"
-          fi
+          ORDERED=$(printf '%s\n' "$CORE\n$NON_CORE" | sed '/^$/d')
+          JSON=$(printf '%s\n' "$ORDERED" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
 
           echo 'has_changes=true' >> "$GITHUB_OUTPUT"
 
-  release-core:
-    name: Release @terra-graph/conventions-core
-    runs-on: ubuntu-latest
-    needs: detect-packages
-    if: needs.detect-packages.outputs.has_core == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Sync branch
-        run: |
-          git fetch origin "${GITHUB_REF_NAME}"
-          git reset --hard "origin/${GITHUB_REF_NAME}"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          registry-url: 'https://registry.npmjs.org'
-          cache: yarn
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Configure npm auth
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "${NPM_TOKEN}" ]; then
-            echo "NPM_TOKEN is missing in this job"
-            exit 1
-          fi
-          TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
-          CONFIG_PATH="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-          {
-            echo "registry=https://registry.npmjs.org/"
-            echo "package-lock=false"
-            echo "//registry.npmjs.org/:_authToken=${TOKEN}"
-          } > "$CONFIG_PATH"
-
-      - name: Lint
-        run: yarn lint:ci
-
-      - name: Build
-        run: yarn workspace @terra-graph/conventions-core build
-
-      - name: Test
-        run: yarn workspace @terra-graph/conventions-core test
-
-      - name: Semantic release
-        run: ./node_modules/.bin/semantic-release -e ./packages/core/.releaserc.cjs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
-          NPM_CONFIG_PACKAGE_LOCK: false
-          NPM_CONFIG_PROVENANCE: true
-
-  release-others:
+  release-packages:
     name: Release ${{ matrix.workspace }}
     runs-on: ubuntu-latest
     needs:
       - detect-packages
-      - release-core
-    if: needs.detect-packages.outputs.has_other == 'true' && (needs.release-core.result == 'success' || needs.release-core.result == 'skipped')
+    if: needs.detect-packages.outputs.has_changes == 'true'
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix: ${{ fromJson(needs.detect-packages.outputs.matrix) }}
 
     steps:
