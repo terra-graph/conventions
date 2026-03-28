@@ -3,6 +3,10 @@
   "version": "0.0.0-development",
   "description": "AWS convention assets for terra-graph",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/terra-graph/conventions"
+  },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
