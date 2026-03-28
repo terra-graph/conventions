@@ -89,16 +89,16 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Lint
-        run: yarn lint:ci
+        run: yarn workspace @terra-graph/conventions-core lint:ci
 
       - name: Build
-        run: yarn build
+        run: yarn workspace @terra-graph/conventions-core build
 
       - name: Test
-        run: yarn test
+        run: yarn workspace @terra-graph/conventions-core test
 
       - name: Semantic release
-        run: yarn workspace "@terra-graph/conventions-core" semantic-release
+        run: yarn workspace @terra-graph/conventions-core semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
