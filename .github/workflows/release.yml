@@ -103,8 +103,10 @@ jobs:
           fi
           TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
           CONFIG_PATH="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-          echo "registry=https://registry.npmjs.org/" > "$CONFIG_PATH"
-          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > "$CONFIG_PATH"
+          {
+            echo "registry=https://registry.npmjs.org/"
+            echo "//registry.npmjs.org/:_authToken=${TOKEN}"
+          } > "$CONFIG_PATH"
 
       - name: Lint
         run: yarn lint:ci
@@ -121,7 +123,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_WORKSPACES: false
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           NPM_CONFIG_PROVENANCE: true
 
@@ -162,8 +163,10 @@ jobs:
           fi
           TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
           CONFIG_PATH="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-          echo "registry=https://registry.npmjs.org/" > "$CONFIG_PATH"
-          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > "$CONFIG_PATH"
+          {
+            echo "registry=https://registry.npmjs.org/"
+            echo "//registry.npmjs.org/:_authToken=${TOKEN}"
+          } > "$CONFIG_PATH"
 
       - name: Lint
         run: yarn lint:ci
@@ -180,6 +183,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_WORKSPACES: false
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           NPM_CONFIG_PROVENANCE: true
