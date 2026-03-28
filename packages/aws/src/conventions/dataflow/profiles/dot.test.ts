@@ -65,7 +65,7 @@ const baseNamedRules = new NamedRuleRegistry({
 
 const baseNamedRuleSets = new NamedRuleSetRegistry({});
 
-describe('dataflow dot profile.', () => {
+describe('dataflow dot profile', () => {
   it('shoud expose namespaced profile metadata and plugin refs', () => {
     const serialized = conventionDataFlowDotProfile.serialize();
 

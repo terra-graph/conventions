@@ -84,6 +84,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Sync branch
+        run: |
+          git fetch origin "${GITHUB_REF_NAME}"
+          git reset --hard "origin/${GITHUB_REF_NAME}"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
