@@ -101,7 +101,9 @@ jobs:
             echo "NPM_TOKEN is missing in this job"
             exit 1
           fi
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
+          printf '%s' "$TOKEN" | sha256sum
+          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > ~/.npmrc
           npm whoami
 
       - name: Lint
@@ -155,7 +157,9 @@ jobs:
             echo "NPM_TOKEN is missing in this job"
             exit 1
           fi
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          TOKEN="$(printf '%s' "$NPM_TOKEN" | tr -d '\r\n')"
+          printf '%s' "$TOKEN" | sha256sum
+          echo "//registry.npmjs.org/:_authToken=${TOKEN}" > ~/.npmrc
           npm whoami
 
       - name: Lint
