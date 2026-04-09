@@ -1,3 +1,9 @@
+## [1.0.0-rc.7](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.6...@terra-graph/conventions-core@1.0.0-rc.7) (2026-04-09)
+
+### Bug Fixes
+
+* move core rules to core conventions ([f204bca](https://github.com/terra-graph/conventions/commit/f204bca70e73fddf50c135bafbaa52e79494aae3))
+
 ## [1.0.0-rc.6](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.5...@terra-graph/conventions-core@1.0.0-rc.6) (2026-04-08)
 
 ### Bug Fixes
