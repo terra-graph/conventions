@@ -1,3 +1,11 @@
+## [1.0.0-rc.10](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.9...@terra-graph/conventions-core@1.0.0-rc.10) (2026-04-09)
+
+### Bug Fixes
+
+* html labels ([57f7d5c](https://github.com/terra-graph/conventions/commit/57f7d5ce925e284185f4012a11a20e5d19666cd9))
+* missing import ([ce4f91e](https://github.com/terra-graph/conventions/commit/ce4f91efaf60b702c5bdbd9f4adddde78a6276c1))
+* missing import ([08f82e0](https://github.com/terra-graph/conventions/commit/08f82e0b52cca80bb6fcf575de5ad35844cf5bf3))
+
 ## [1.0.0-rc.9](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.8...@terra-graph/conventions-core@1.0.0-rc.9) (2026-04-09)
 
 ### Bug Fixes
