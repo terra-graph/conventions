@@ -1,3 +1,9 @@
+## [1.0.0-rc.8](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.7...@terra-graph/conventions-core@1.0.0-rc.8) (2026-04-09)
+
+### Features
+
+* add new core dot profile ([b4b35f2](https://github.com/terra-graph/conventions/commit/b4b35f25394245195429199970a87d08a0b76bc9))
+
 ## [1.0.0-rc.7](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.6...@terra-graph/conventions-core@1.0.0-rc.7) (2026-04-09)
 
 ### Bug Fixes
