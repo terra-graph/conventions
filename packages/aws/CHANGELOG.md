@@ -1,3 +1,13 @@
+## [1.0.0-rc.3](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.2...@terra-graph/conventions-aws@1.0.0-rc.3) (2026-04-09)
+
+### Features
+
+* add new core dot profile ([b4b35f2](https://github.com/terra-graph/conventions/commit/b4b35f25394245195429199970a87d08a0b76bc9))
+
+### Bug Fixes
+
+* bump core dep ([b30c722](https://github.com/terra-graph/conventions/commit/b30c722f549280aa19a8e0ba914ea2d07e7ff80f))
+
 ## [1.0.0-rc.2](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.1...@terra-graph/conventions-aws@1.0.0-rc.2) (2026-04-09)
 
 ### Bug Fixes
