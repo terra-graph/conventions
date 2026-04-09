@@ -1,3 +1,9 @@
+## [1.0.0-rc.9](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.8...@terra-graph/conventions-core@1.0.0-rc.9) (2026-04-09)
+
+### Bug Fixes
+
+* bump core dep ([b30c722](https://github.com/terra-graph/conventions/commit/b30c722f549280aa19a8e0ba914ea2d07e7ff80f))
+
 ## [1.0.0-rc.8](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.7...@terra-graph/conventions-core@1.0.0-rc.8) (2026-04-09)
 
 ### Features
