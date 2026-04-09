@@ -3,10 +3,9 @@ import {
   DotAdapter,
   type NodeId,
   NodeRule,
-  TgNode,
   type TgNodeAttributes,
+  TgNodeLabel,
 } from '@terra-graph/core';
-import { TgNodeLabel } from '@terra-graph/core/Graph/Renderers/TgNodeLabel.js';
 
 export class DotNodeLabel extends NodeRule {
   public override supports(adapter: AdapterOperations): boolean {
