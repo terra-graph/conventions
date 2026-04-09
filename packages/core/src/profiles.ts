@@ -6,9 +6,9 @@ export const coreBase = new Profile(profileName('base'), {
     {
       phase: 'pre',
       rules: [
-        { namedRule: 'remove.tfconfig' },
-        { namedRule: 'reconnect.time_sleep' },
-        { namedRule: 'remove.childless_modules' },
+        { namedRule: 'core.remove.tfconfig' },
+        { namedRule: 'core.reconnect.time_sleep' },
+        { namedRule: 'core.remove.childless_modules' },
       ],
     },
   ],

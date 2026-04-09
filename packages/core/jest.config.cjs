@@ -16,6 +16,7 @@ const config = {
     '<rootDir>/src/**/*.ts',
     '!<rootDir>/src/**/*.test.ts',
     '!<rootDir>/src/**/index.ts',
+    '!<rootDir>/src/**/rules.ts',
   ],
   coverageThreshold: {
     global: {

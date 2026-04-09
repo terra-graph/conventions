@@ -8,9 +8,9 @@ describe('coreBase profile', () => {
     expect(serialized.name).toBe(profileName('base'));
     expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['pre']);
     expect(serialized.phases?.[0]?.rules).toEqual([
-      { namedRule: 'remove.tfconfig' },
-      { namedRule: 'reconnect.time_sleep' },
-      { namedRule: 'remove.childless_modules' },
+      { namedRule: 'core.remove.tfconfig' },
+      { namedRule: 'core.reconnect.time_sleep' },
+      { namedRule: 'core.remove.childless_modules' },
     ]);
   });
 });

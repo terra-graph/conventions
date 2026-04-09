@@ -16,7 +16,7 @@ import dataFlowConventionRuleSet from '../rulesets.js';
 import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
 
 const baseNamedRules = new NamedRuleRegistry({
-  'remove.tfconfig': new RemoveNode({
+  'core.remove.tfconfig': new RemoveNode({
     node: {
       or: [
         {
@@ -34,7 +34,7 @@ const baseNamedRules = new NamedRuleRegistry({
       ],
     },
   }),
-  'reconnect.time_sleep': new RemoveNodeAndReconnectEdges({
+  'core.reconnect.time_sleep': new RemoveNodeAndReconnectEdges({
     node: {
       attr: {
         key: 'terraform.resource',
@@ -42,7 +42,7 @@ const baseNamedRules = new NamedRuleRegistry({
       },
     },
   }),
-  'remove.childless_modules': new RemoveNode({
+  'core.remove.childless_modules': new RemoveNode({
     node: {
       and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],
     },
@@ -65,7 +65,7 @@ const baseNamedRules = new NamedRuleRegistry({
 
 const baseNamedRuleSets = new NamedRuleSetRegistry({});
 
-describe('data flow dot profile', () => {
+describe('dataflow dot profile', () => {
   it('shoud expose namespaced profile metadata and plugin refs', () => {
     const serialized = conventionDataFlowDotProfile.serialize();
 
