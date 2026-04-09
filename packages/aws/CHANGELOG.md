@@ -1,3 +1,9 @@
+## [1.0.0-rc.2](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.1...@terra-graph/conventions-aws@1.0.0-rc.2) (2026-04-09)
+
+### Bug Fixes
+
+* move core rules to core conventions ([f204bca](https://github.com/terra-graph/conventions/commit/f204bca70e73fddf50c135bafbaa52e79494aae3))
+
 ## 1.0.0-rc.1 (2026-03-28)
 
 ### Features
