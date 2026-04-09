@@ -108,7 +108,7 @@ describe('DotNodeLabel.apply', () => {
     });
   });
 
-  it('should default label parts when terraform data is missing', () => {
+  it('should fall back to the node label when no resource/name pair exists', () => {
     const nodeId = asNodeId('node-b');
     const tg: TgGraph = {
       schemaVersion: TG_SCHEMA_VERSION,
@@ -136,7 +136,7 @@ describe('DotNodeLabel.apply', () => {
       ...node,
       adapter: {
         [DotAdapter.name]: {
-          label: makeExpectedLabel('unknown', 'unknown'),
+          label: 'node-b',
         },
       },
     } as TgNodeAttributes);

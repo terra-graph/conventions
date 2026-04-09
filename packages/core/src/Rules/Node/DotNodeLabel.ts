@@ -3,8 +3,10 @@ import {
   DotAdapter,
   type NodeId,
   NodeRule,
+  TgNode,
   type TgNodeAttributes,
 } from '@terra-graph/core';
+import { TgNodeLabel } from '@terra-graph/core/Graph/Renderers/TgNodeLabel.js';
 
 export class DotNodeLabel extends NodeRule {
   public override supports(adapter: AdapterOperations): boolean {
@@ -28,16 +30,18 @@ export class DotNodeLabel extends NodeRule {
         ...(node.adapter ?? {}),
         [adapterKey]: {
           ...(node.adapter?.[adapterKey] ?? {}),
-          label: this.makeHtmlLabel(
-            node.terraform?.resource ?? 'unknown',
-            node.terraform?.name ?? 'unknown',
-          ),
+          label: this.makeHtmlLabel(new TgNodeLabel({ id: nodeId, ...node })),
         },
       },
     });
   }
 
-  private makeHtmlLabel(resourceType: string, resourceName: string): string {
+  private makeHtmlLabel(node: TgNodeLabel): string {
+    const [resourceType, resourceName] = node.getLabel().split('.');
+    if (!(resourceType && resourceName)) {
+      return node.getLabel();
+    }
+
     return `
       <<table align="left" border="0" cellpadding="0" cellspacing="0" cellborder="0">
         <tr>
