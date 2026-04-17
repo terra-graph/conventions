@@ -1,3 +1,10 @@
+## [1.0.0-rc.11](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.10...@terra-graph/conventions-core@1.0.0-rc.11) (2026-04-17)
+
+### Bug Fixes
+
+* use convention definitions from core ([fc0e115](https://github.com/terra-graph/conventions/commit/fc0e115ac0330ac9252c892db9f3e1e6ff3ae752))
+* use convention definitions from core ([33bf412](https://github.com/terra-graph/conventions/commit/33bf412efc526cf7aefba7c0261e1b0e37c5ec61))
+
 ## [1.0.0-rc.10](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.9...@terra-graph/conventions-core@1.0.0-rc.10) (2026-04-09)
 
 ### Bug Fixes
