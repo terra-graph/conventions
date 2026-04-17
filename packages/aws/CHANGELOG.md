@@ -1,3 +1,14 @@
+## [1.0.0-rc.4](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.3...@terra-graph/conventions-aws@1.0.0-rc.4) (2026-04-17)
+
+### Bug Fixes
+
+* html labels ([57f7d5c](https://github.com/terra-graph/conventions/commit/57f7d5ce925e284185f4012a11a20e5d19666cd9))
+* missing import ([ce4f91e](https://github.com/terra-graph/conventions/commit/ce4f91efaf60b702c5bdbd9f4adddde78a6276c1))
+* missing import ([08f82e0](https://github.com/terra-graph/conventions/commit/08f82e0b52cca80bb6fcf575de5ad35844cf5bf3))
+* tess ([397ff3f](https://github.com/terra-graph/conventions/commit/397ff3f7498af3e68d49026d84dd5e30949a8f96))
+* use convention definitions from core ([fc0e115](https://github.com/terra-graph/conventions/commit/fc0e115ac0330ac9252c892db9f3e1e6ff3ae752))
+* use convention definitions from core ([33bf412](https://github.com/terra-graph/conventions/commit/33bf412efc526cf7aefba7c0261e1b0e37c5ec61))
+
 ## [1.0.0-rc.3](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.2...@terra-graph/conventions-aws@1.0.0-rc.3) (2026-04-09)
 
 ### Features
