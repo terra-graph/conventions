@@ -23,6 +23,8 @@ import dotRules from './rules/dot.js';
 import generalRules from './rules/general.js';
 import dotRuleSet from './rulesets/dot.js';
 
+export * from './conventions/dataflow/edgeSemantics.js';
+
 export default (): RuntimeProvider => ({
   namedRules: NamedRuleRegistry.from([generalRules, dotRules, dataFlowConventionRules]),
   namedRuleSets: NamedRuleSetRegistry.from([dotRuleSet, dataflowConventionRuleSet]),

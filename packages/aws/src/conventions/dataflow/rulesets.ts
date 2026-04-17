@@ -4,10 +4,10 @@ import {
   NamedRuleSetRegistry,
   RemoveNode,
   RuleSet,
-  TgEdgeDirectionSemantics,
 } from '@terra-graph/core';
 import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
+import { AwsEdgeDirectionSemantics } from './edgeSemantics.js';
 
 export default new NamedRuleSetRegistry({
   [conventionName(Convention.DataFlow, ruleSetName('cleanup'))]: new RuleSet({
@@ -37,7 +37,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeDirectionSemantics.Authorizes,
         },
       }),
       new EdgeDirectionSemantic({
@@ -65,7 +65,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeDirectionSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
@@ -82,7 +82,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeDirectionSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
@@ -99,7 +99,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeDirectionSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
@@ -121,7 +121,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -141,7 +141,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -161,7 +161,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeDirectionSemantics.Triggers,
           enforceDirection: true,
         },
       }),
@@ -181,7 +181,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeDirectionSemantics.Accesses,
           enforceDirection: true,
         },
       }),
@@ -210,7 +210,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -230,7 +230,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -253,7 +253,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeDirectionSemantics.Triggers,
           enforceDirection: true,
         },
       }),
@@ -285,7 +285,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Publishes,
+          semantic: AwsEdgeDirectionSemantics.Publishes,
         },
       }),
       new EdgeDirectionSemantic({
@@ -304,7 +304,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeDirectionSemantics.Accesses,
           enforceDirection: true,
         },
       }),
@@ -344,7 +344,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeDirectionSemantics.Accesses,
           enforceDirection: true,
         },
       }),
@@ -366,7 +366,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeDirectionSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
@@ -386,7 +386,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -406,7 +406,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -426,7 +426,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeDirectionSemantics.Accesses,
           enforceDirection: true,
         },
       }),
@@ -446,7 +446,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeDirectionSemantics.Triggers,
           enforceDirection: true,
         },
       }),
@@ -466,7 +466,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Publishes,
+          semantic: AwsEdgeDirectionSemantics.Publishes,
           enforceDirection: true,
         },
       }),
@@ -505,7 +505,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeDirectionSemantics.Triggers,
           enforceDirection: true,
         },
       }),
@@ -532,7 +532,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -566,7 +566,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Routes,
+          semantic: AwsEdgeDirectionSemantics.Routes,
           enforceDirection: true,
         },
       }),
@@ -586,7 +586,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Routes,
+          semantic: AwsEdgeDirectionSemantics.Routes,
           enforceDirection: true,
         },
       }),
@@ -606,7 +606,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeDirectionSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
@@ -630,7 +630,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeDirectionSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
@@ -650,7 +650,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeDirectionSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
@@ -670,7 +670,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeDirectionSemantics.Accesses,
           enforceDirection: true,
         },
       }),
@@ -690,7 +690,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -710,7 +710,7 @@ export default new NamedRuleSetRegistry({
           },
         },
         options: {
-          semantic: TgEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeDirectionSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -721,31 +721,31 @@ export default new NamedRuleSetRegistry({
         },
         options: {
           legendBySemantic: {
-            [TgEdgeDirectionSemantics.Invokes]: {
+            [AwsEdgeDirectionSemantics.Invokes]: {
               title: 'Invokes',
               colour: '#0d6efd',
             },
-            [TgEdgeDirectionSemantics.Accesses]: {
+            [AwsEdgeDirectionSemantics.Accesses]: {
               title: 'Accesses data',
               colour: '#198754',
             },
-            [TgEdgeDirectionSemantics.Publishes]: {
+            [AwsEdgeDirectionSemantics.Publishes]: {
               title: 'Publishes event',
               colour: '#fd7e14',
             },
-            [TgEdgeDirectionSemantics.Triggers]: {
+            [AwsEdgeDirectionSemantics.Triggers]: {
               title: 'Triggers async consumer',
               colour: '#dc3545',
             },
-            [TgEdgeDirectionSemantics.Routes]: {
+            [AwsEdgeDirectionSemantics.Routes]: {
               title: 'Routes request',
               colour: '#6f42c1',
             },
-            [TgEdgeDirectionSemantics.Authorizes]: {
+            [AwsEdgeDirectionSemantics.Authorizes]: {
               title: 'Authorizes',
               colour: '#8dd7c5',
             },
-            [TgEdgeDirectionSemantics.ObservedBy]: {
+            [AwsEdgeDirectionSemantics.ObservedBy]: {
               title: 'Observed by telemetry',
               colour: '#20c997',
             },
