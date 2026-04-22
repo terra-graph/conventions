@@ -42,6 +42,14 @@ const baseNamedRules = new NamedRuleRegistry({
       },
     },
   }),
+  'core.collapse.indexed_resource_templates': new RemoveNodeAndReconnectEdges({
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        eq: 'resource',
+      },
+    },
+  }),
   'core.remove.childless_modules': new RemoveNode({
     node: {
       and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],

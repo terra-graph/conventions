@@ -10,6 +10,7 @@ describe('coreBase profile', () => {
     expect(serialized.phases?.[0]?.rules).toEqual([
       { namedRule: 'core.remove.tfconfig' },
       { namedRule: 'core.reconnect.time_sleep' },
+      { namedRule: 'core.collapse.indexed_resource_templates' },
       { namedRule: 'core.remove.childless_modules' },
     ]);
   });

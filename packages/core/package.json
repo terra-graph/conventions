@@ -30,10 +30,10 @@
     "semantic-release": "semantic-release"
   },
   "peerDependencies": {
-    "@terra-graph/core": "^1.0.0-rc.9"
+    "@terra-graph/core": "^1.0.0-rc.10"
   },
   "devDependencies": {
-    "@terra-graph/core": "^1.0.0-rc.9"
+    "@terra-graph/core": "^1.0.0-rc.10"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,39 @@
 import { NamedRuleRegistry, RemoveNode, RemoveNodeAndReconnectEdges } from '@terra-graph/core';
+import { CollapseIndexedResourceTemplates } from './Rules/Node/CollapseIndexedResourceTemplates.js';
 
 export const coreNamedRules = new NamedRuleRegistry({
+  'core.remove.outputs': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        in: ['output'],
+      },
+    },
+  }),
+  'core.remove.providers': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        in: ['provider'],
+      },
+    },
+  }),
+  'core.remove.root': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        in: ['root'],
+      },
+    },
+  }),
+  'core.remove.artifacts': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.resource',
+        in: ['archive_file', 'local_file'],
+      },
+    },
+  }),
   'core.remove.tfconfig': new RemoveNode({
     node: {
       or: [
@@ -18,7 +51,7 @@ export const coreNamedRules = new NamedRuleRegistry({
         {
           attr: {
             key: 'terraform.resource',
-            in: ['null_resource', 'local_file'],
+            in: ['null_resource'],
           },
         },
       ],
@@ -32,24 +65,17 @@ export const coreNamedRules = new NamedRuleRegistry({
       },
     },
   }),
+  'core.collapse.indexed_resource_templates': new CollapseIndexedResourceTemplates({
+    node: {
+      attr: {
+        key: 'terraform.kind',
+        eq: 'resource',
+      },
+    },
+  }),
   'core.remove.childless_modules': new RemoveNode({
     node: {
       and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],
     },
   }),
-  // if used should be in a dot NamedRuleRegistry
-  // 'dot.normalise_modules': new NodeDotProperties({
-  //   options: {
-  //     peripheries: 0,
-  //     label: '',
-  //     height: 0,
-  //     width: 0,
-  //   },
-  //   node: {
-  //     attr: {
-  //       key: 'terraform.kind',
-  //       eq: 'module',
-  //     },
-  //   },
-  // }),
 });
