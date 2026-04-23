@@ -1,15 +1,62 @@
-import {
-  EdgeDirectionSemantic,
-  EdgeSemanticLegend,
-  NamedRuleSetRegistry,
-  RemoveNode,
-  RuleSet,
-} from '@terra-graph/core';
+import { NamedRuleSetRegistry, RemoveNode, RuleSet } from '@terra-graph/core';
 import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
-import { AwsEdgeDirectionSemantics } from './edgeSemantics.js';
+import acmSemanticsRuleSet from './rulesets/acm.js';
+import apiGatewaySemanticsRuleSet from './rulesets/apigateway.js';
+import athenaSemanticsRuleSet from './rulesets/athena.js';
+import cloudFrontSemanticsRuleSet from './rulesets/cloudfront.js';
+import cloudwatchSemanticsRuleSet, { cloudwatchPreRuleSet } from './rulesets/cloudwatch.js';
+import dynamodbSemanticsRuleSet from './rulesets/dynamodb.js';
+import ecsSemanticsRuleSet from './rulesets/ecs.js';
+import eventBridgeSemanticsRuleSet from './rulesets/eventbridge.js';
+import glueSemanticsRuleSet from './rulesets/glue.js';
+import iamSemanticsRuleSet from './rulesets/iam.js';
+import kinesisSemanticsRuleSet from './rulesets/kinesis.js';
+import lambdaSemanticsRuleSet, { lambdaPreRuleSet } from './rulesets/lambda.js';
+import legendSemanticsRuleSet from './rulesets/legend.js';
+import s3SemanticsRuleSet from './rulesets/s3.js';
+import schedulerSemanticsRuleSet from './rulesets/scheduler.js';
+import secretsManagerSemanticsRuleSet from './rulesets/secretsmanager.js';
+import snsSemanticsRuleSet from './rulesets/sns.js';
+import sqsSemanticsRuleSet from './rulesets/sqs.js';
+import stepFunctionsSemanticsRuleSet from './rulesets/stepfunctions.js';
+import timestreamSemanticsRuleSet from './rulesets/timestream.js';
+import wafSemanticsRuleSet from './rulesets/waf.js';
 
 export default new NamedRuleSetRegistry({
+  [conventionName(Convention.DataFlow, ruleSetName('pre'))]: new RuleSet({
+    rules: [
+      lambdaPreRuleSet,
+      // cloudwatchPreRuleSet
+    ].flatMap((ruleSet) => ruleSet.resolvePhases()[0] ?? []),
+  }),
+  [conventionName(Convention.DataFlow, ruleSetName('normalize'))]: new RuleSet(),
+  [conventionName(Convention.DataFlow, ruleSetName('semantics'))]: new RuleSet({
+    rules: [
+      iamSemanticsRuleSet,
+      lambdaSemanticsRuleSet,
+      cloudwatchSemanticsRuleSet,
+      eventBridgeSemanticsRuleSet,
+      dynamodbSemanticsRuleSet,
+      schedulerSemanticsRuleSet,
+      s3SemanticsRuleSet,
+      ecsSemanticsRuleSet,
+      stepFunctionsSemanticsRuleSet,
+      secretsManagerSemanticsRuleSet,
+      athenaSemanticsRuleSet,
+      sqsSemanticsRuleSet,
+      snsSemanticsRuleSet,
+      kinesisSemanticsRuleSet,
+      apiGatewaySemanticsRuleSet,
+      glueSemanticsRuleSet,
+      timestreamSemanticsRuleSet,
+      wafSemanticsRuleSet,
+      acmSemanticsRuleSet,
+      cloudFrontSemanticsRuleSet,
+      legendSemanticsRuleSet,
+    ].flatMap((ruleSet) => ruleSet.resolvePhases()[0] ?? []),
+  }),
+  [conventionName(Convention.DataFlow, ruleSetName('main'))]: new RuleSet(),
   [conventionName(Convention.DataFlow, ruleSetName('cleanup'))]: new RuleSet({
     rules: [
       new RemoveNode({
@@ -22,6 +69,10 @@ export default new NamedRuleSetRegistry({
       }),
     ],
   }),
+});
+
+/*
+Legacy inline semantics ruleset (comparison reference):
   [conventionName(Convention.DataFlow, ruleSetName('semantics'))]: new RuleSet({
     rules: [
       new EdgeDirectionSemantic({
@@ -754,4 +805,4 @@ export default new NamedRuleSetRegistry({
       }),
     ],
   }),
-});
+*/

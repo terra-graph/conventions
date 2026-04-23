@@ -7,10 +7,13 @@ import dataFlowConventionRuleSet from './rulesets.js';
 describe('dataflow convention rule sets', () => {
   it('shoud register the dataflow semantics ruleset', () => {
     const names = dataFlowConventionRuleSet.names();
-    expect(names).toHaveLength(2);
+    expect(names).toHaveLength(5);
     expect(names).toEqual(
       expect.arrayContaining([
+        conventionName(Convention.DataFlow, ruleSetName('pre')),
+        conventionName(Convention.DataFlow, ruleSetName('normalize')),
         conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+        conventionName(Convention.DataFlow, ruleSetName('main')),
         conventionName(Convention.DataFlow, ruleSetName('semantics')),
       ]),
     );
@@ -57,5 +60,38 @@ describe('dataflow convention rule sets', () => {
     for (const semantic of Object.keys(legendBySemantic)) {
       expect(semanticValues.has(semantic)).toBe(true);
     }
+  });
+
+  it('shoud enforce direction for IAM authorizes semantics', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const serializedRules = phases[0].map((rule) => rule.serialize());
+
+    expect(serializedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'EdgeDirectionSemantic',
+          config: expect.objectContaining({
+            options: expect.objectContaining({
+              semantic: AwsEdgeDirectionSemantics.Authorizes,
+              enforceDirection: true,
+            }),
+            edge: expect.objectContaining({
+              from: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  startsWith: 'aws_iam_',
+                }),
+              }),
+              to: expect.objectContaining({
+                any: true,
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
   });
 });

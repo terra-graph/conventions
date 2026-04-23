@@ -18,15 +18,14 @@ import { AwsApiGateway } from './plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
 import { AwsS3 } from './plugins/AwsS3.js';
 import { AwsSns } from './plugins/AwsSns.js';
-import { AwsTransferFamily } from './plugins/AwsTransferFamily.js';
 import dotRules from './rules/dot.js';
-import generalRules from './rules/general.js';
+import terraformRules from './rules/terraform.js';
 import dotRuleSet from './rulesets/dot.js';
 
 export * from './conventions/dataflow/edgeSemantics.js';
 
 export default (): RuntimeProvider => ({
-  namedRules: NamedRuleRegistry.from([generalRules, dotRules, dataFlowConventionRules]),
+  namedRules: NamedRuleRegistry.from([terraformRules, dotRules, dataFlowConventionRules]),
   namedRuleSets: NamedRuleSetRegistry.from([dotRuleSet, dataflowConventionRuleSet]),
   profiles: new ProfileRegistry({
     [conventionDataFlowDotProfileName]: conventionDataFlowDotProfile,
@@ -37,7 +36,6 @@ export default (): RuntimeProvider => ({
     [AwsIamGraphPlugin.id]: new AwsIamGraphPlugin(),
     [AwsS3.id]: new AwsS3(),
     [AwsSns.id]: new AwsSns(),
-    [AwsTransferFamily.id]: new AwsTransferFamily(),
   }),
   supportedAdapterOperationsRegistry: {
     DotAdapter,

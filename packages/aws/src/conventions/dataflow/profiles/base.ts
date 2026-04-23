@@ -1,6 +1,7 @@
 import { coreBase } from '@terra-graph/conventions-core';
 import { Profile, RemoveNode } from '@terra-graph/core';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
+import { AwsApiGateway } from '../../../plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
 import { AwsS3 } from '../../../plugins/AwsS3.js';
 import { Convention } from '../../index.js';
@@ -34,21 +35,15 @@ export default new Profile(conventionDataFlowBaseProfileName, {
             ],
           },
         }),
-        // { namedRule: ruleName('log_groups.only_event_bridge') },
-        { namedRule: ruleName('lambda.only_event_source_mapping') },
       ],
+    },
+    {
+      phase: 'normalize',
+      rules: [{ namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('normalize')) }],
     },
     {
       phase: 'semantics',
       rules: [{ namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) }],
-    },
-    {
-      phase: 'cleanup',
-      rules: [
-        // not sure this semantics re-run is needed?
-        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
-        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('cleanup')) },
-      ],
     },
     {
       phase: 'main',
@@ -68,9 +63,18 @@ export default new Profile(conventionDataFlowBaseProfileName, {
         // }),
       ],
     },
+    {
+      phase: 'cleanup',
+      rules: [
+        // not sure this semantics re-run is needed?
+        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
+        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('cleanup')) },
+      ],
+    },
   ],
   plugins: [
     { plugin: AwsS3.id },
+    { plugin: AwsApiGateway.id, options: { mode: 'minimal' } },
     {
       plugin: AwsIamGraphPlugin.id,
       options: { mode: 'full', removeOrphans: true },

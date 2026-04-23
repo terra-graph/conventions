@@ -10,7 +10,6 @@ import { AwsApiGateway } from './plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
 import { AwsS3 } from './plugins/AwsS3.js';
 import { AwsSns } from './plugins/AwsSns.js';
-import { AwsTransferFamily } from './plugins/AwsTransferFamily.js';
 
 const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
   const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } =
@@ -35,13 +34,11 @@ describe('aws provider', () => {
 
     expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
     expect(plugins.names().sort()).toStrictEqual(
-      [AwsApiGateway.id, AwsIamGraphPlugin.id, AwsS3.id, AwsSns.id, AwsTransferFamily.id].sort(),
+      [AwsApiGateway.id, AwsIamGraphPlugin.id, AwsS3.id, AwsSns.id].sort(),
     );
     expect(namedRules.names().sort()).toEqual(
       [
         ruleName('data.remove'),
-        ruleName('log_groups.only_event_bridge'),
-        ruleName('lambda.only_event_source_mapping'),
         ruleName('dot.sqs.dlq.align'),
         ruleName('dot.schedule.align'),
         ruleName('dot.iam_role.align'),
@@ -51,7 +48,10 @@ describe('aws provider', () => {
     expect(namedRuleSets.names().sort()).toEqual(
       [
         ruleSetName('dot.sqs.dlq'),
+        conventionName(Convention.DataFlow, ruleSetName('pre')),
+        conventionName(Convention.DataFlow, ruleSetName('normalize')),
         conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+        conventionName(Convention.DataFlow, ruleSetName('main')),
         conventionName(Convention.DataFlow, ruleSetName('semantics')),
       ].sort(),
     );
@@ -63,8 +63,8 @@ describe('aws provider', () => {
   it('shoud aggregate rule registries without losing named registration count', () => {
     const runtime = buildRuntimeProvider();
     const { namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
-    expect(namedRules.names().length).toBe(6);
-    expect(namedRuleSets.names().length).toBe(3);
+    expect(namedRules.names().length).toBe(4);
+    expect(namedRuleSets.names().length).toBe(6);
     expect(profiles.names().length).toBe(2);
   });
 

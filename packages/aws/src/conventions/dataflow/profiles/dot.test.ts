@@ -8,6 +8,7 @@ import {
 } from '@terra-graph/core';
 import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
+import { AwsApiGateway } from '../../../plugins/AwsApiGateway.js';
 import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
 import { AwsS3 } from '../../../plugins/AwsS3.js';
 import { Convention } from '../../index.js';
@@ -84,12 +85,14 @@ describe('dataflow dot profile', () => {
     const baseProfile = serialized.usesProfiles?.[0];
     expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
       'pre',
+      'normalize',
       'semantics',
-      'cleanup',
       'main',
+      'cleanup',
     ]);
     expect(baseProfile?.plugins).toEqual([
       { plugin: AwsS3.id },
+      { plugin: AwsApiGateway.id, options: { mode: 'minimal' } },
       {
         plugin: AwsIamGraphPlugin.id,
         options: { mode: 'full', removeOrphans: true },
@@ -130,10 +133,7 @@ describe('dataflow dot profile', () => {
     const mainRules = conventionDataFlowDotProfile.serialize().phases?.[0]?.rules;
 
     expect(preRules).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'RemoveNode' }),
-        { namedRule: ruleName('lambda.only_event_source_mapping') },
-      ]),
+      expect.arrayContaining([expect.objectContaining({ id: 'RemoveNode' })]),
     );
     expect(mainRules).toEqual(
       expect.arrayContaining([
