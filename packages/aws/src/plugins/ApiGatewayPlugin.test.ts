@@ -6,9 +6,12 @@ import {
   type NamedPhase,
   NamedRuleRegistry,
   NamedRuleSetRegistry,
+  type NodeId,
   type SerializedRule,
   TG_SCHEMA_VERSION,
   type TgGraph,
+  type TgNode,
+  type TgNodeTerraformState,
   asEdgeId,
   asNodeId,
   tgNodeIdFrom,
@@ -877,7 +880,7 @@ describe('AwsApiGateway.build', () => {
       throw new Error('Missing NormalizeRestApiResourcePathToRoute');
     }
 
-    const restNode = {
+    const restNode: TgNode = {
       id: restApiId,
       label: 'api',
       terraform: {
@@ -887,7 +890,7 @@ describe('AwsApiGateway.build', () => {
         name: 'mock',
       },
     };
-    const predecessorNode = {
+    const predecessorNode: TgNode = {
       id: resourceId,
       label: 'resource',
       terraform: {
@@ -1013,7 +1016,7 @@ describe('AwsApiGateway.build', () => {
             resource: 'aws_apigatewayv2_api',
             name: 'scope',
             moduleAddress: 'module.api',
-            parentModuleNodeId: 'module-node-a',
+            parentModuleNodeId: asNodeId('module-node-a'),
           },
         },
         [moduleMismatchRouteId]: {
@@ -1025,7 +1028,7 @@ describe('AwsApiGateway.build', () => {
             resource: 'aws_apigatewayv2_route',
             name: 'GET /module-mismatch',
             moduleAddress: 'module.other',
-            parentModuleNodeId: 'module-node-a',
+            parentModuleNodeId: asNodeId('module-node-a'),
           },
         },
         [parentMismatchRouteId]: {
@@ -1037,7 +1040,7 @@ describe('AwsApiGateway.build', () => {
             resource: 'aws_apigatewayv2_route',
             name: 'GET /parent-mismatch',
             moduleAddress: 'module.api',
-            parentModuleNodeId: 'module-node-b',
+            parentModuleNodeId: asNodeId('module-node-b'),
           },
         },
         [integrationId]: {
@@ -1358,11 +1361,14 @@ describe('AwsApiGateway.build', () => {
             address: 'aws_apigatewayv2_route.state_key',
             resource: 'aws_apigatewayv2_route',
             state: {
+              source: 'state_show',
               effective: {
+                address: 'aws_apigatewayv2_route.state_key',
                 values: {
                   route_key: 'GET /state',
                 },
               },
+              instances: [],
             },
           },
         },
@@ -1453,7 +1459,7 @@ describe('AwsApiGateway.build', () => {
             kind: 'resource',
             address: 123 as unknown as string,
             resource: 'aws_apigatewayv2_route',
-            state: [] as unknown as Record<string, unknown>,
+            state: [] as unknown as TgNodeTerraformState,
           },
         },
       },
