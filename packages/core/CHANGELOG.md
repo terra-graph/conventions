@@ -1,3 +1,9 @@
+## [1.0.0-rc.14](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.13...@terra-graph/conventions-core@1.0.0-rc.14) (2026-04-23)
+
+### Bug Fixes
+
+* compile errors ([19f7bc4](https://github.com/terra-graph/conventions/commit/19f7bc4101bb46b9e4b652110216a0e02988e1cb))
+
 ## [1.0.0-rc.13](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.12...@terra-graph/conventions-core@1.0.0-rc.13) (2026-04-23)
 
 ### Features
