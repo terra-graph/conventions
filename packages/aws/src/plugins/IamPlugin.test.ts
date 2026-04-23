@@ -6,8 +6,8 @@ import {
   NamedRuleSetRegistry,
   type SerializedRule,
 } from '@terra-graph/core';
-import { AwsIamGraphPlugin } from './AwsIam.js';
-import type { AwsIamGraphPluginOptions } from './AwsIam.js';
+import { IamPlugin } from './IamPlugin.js';
+import type { AwsIamGraphPluginOptions } from './IamPlugin.js';
 
 type SerializedPhaseStep = {
   phase: NamedPhase;
@@ -15,7 +15,7 @@ type SerializedPhaseStep = {
 };
 
 const buildPhases = (options: AwsIamGraphPluginOptions = {}): SerializedPhaseStep[] => {
-  const plugin = new AwsIamGraphPlugin();
+  const plugin = new IamPlugin();
   const result = plugin.build({
     options,
     namedRules: new NamedRuleRegistry(),
@@ -349,7 +349,7 @@ describe('AwsIamGraphPlugin.build', () => {
   });
 
   it('shoud throw for invalid option values', () => {
-    const plugin = new AwsIamGraphPlugin();
+    const plugin = new IamPlugin();
 
     expect(() =>
       plugin.build({
@@ -357,9 +357,7 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow(
-      `${AwsIamGraphPlugin.id} options.mode must be one of: roles_only, roles_policies, full`,
-    );
+    ).toThrow(`${IamPlugin.id} options.mode must be one of: roles_only, roles_policies, full`);
 
     expect(() =>
       plugin.build({
@@ -369,11 +367,11 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow(`${AwsIamGraphPlugin.id} options.removeOrphans must be a boolean`);
+    ).toThrow(`${IamPlugin.id} options.removeOrphans must be a boolean`);
   });
 
   it('shoud throw for invalid attachment mode values', () => {
-    const plugin = new AwsIamGraphPlugin();
+    const plugin = new IamPlugin();
 
     expect(() =>
       plugin.build({
@@ -383,13 +381,11 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow(
-      `${AwsIamGraphPlugin.id} options.attachments must be one of: remove, convert_to_edge, keep`,
-    );
+    ).toThrow(`${IamPlugin.id} options.attachments must be one of: remove, convert_to_edge, keep`);
   });
 
   it('shoud throw for invalid policy document mode values', () => {
-    const plugin = new AwsIamGraphPlugin();
+    const plugin = new IamPlugin();
 
     expect(() =>
       plugin.build({
@@ -399,9 +395,7 @@ describe('AwsIamGraphPlugin.build', () => {
         namedRules: new NamedRuleRegistry(),
         namedRuleSets: new NamedRuleSetRegistry(),
       } as GraphPluginBuildInput<AwsIamGraphPluginOptions>),
-    ).toThrow(
-      `${AwsIamGraphPlugin.id} options.policyDocuments must be one of: none, trust_only, all`,
-    );
+    ).toThrow(`${IamPlugin.id} options.policyDocuments must be one of: none, trust_only, all`);
   });
 
   it('shoud keep attachment resources when full mode is configured as keep', () => {

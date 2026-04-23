@@ -52,11 +52,11 @@ type PluginPhases = NonNullable<GraphPluginBuildResult['phases']>;
 type PluginRules = PluginPhases[number]['rules'];
 type PluginRulePhases = PluginRules[];
 
-export class AwsIamGraphPlugin extends GraphPlugin<AwsIamGraphPluginOptions> {
-  static id = pluginId(`aws.${AwsIamGraphPlugin.name}`);
+export class IamPlugin extends GraphPlugin<AwsIamGraphPluginOptions> {
+  static id = pluginId(`aws.${IamPlugin.name}`);
 
   constructor() {
-    super(AwsIamGraphPlugin.id, {
+    super(IamPlugin.id, {
       mode: 'roles_only',
     });
   }

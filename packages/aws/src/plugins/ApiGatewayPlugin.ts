@@ -70,7 +70,14 @@ const extractRouteKeyFromAddress = (address: string): string | undefined => {
     return undefined;
   }
 
-  return (bracketMatch[1] ?? bracketMatch[2])?.trim() || undefined;
+  if (typeof bracketMatch[1] === 'string') {
+    return bracketMatch[1].trim() || undefined;
+  }
+  if (typeof bracketMatch[2] === 'string') {
+    return bracketMatch[2].trim() || undefined;
+  }
+  /* istanbul ignore next: regex guarantees one of the capture groups when matched */
+  return undefined;
 };
 
 const normalizeRouteKey = (value: string): string => {
@@ -81,12 +88,26 @@ const normalizeRouteKey = (value: string): string => {
 
   const thisWrapperMatch = trimmed.match(/^this\[(?:"([^"]+)"|'([^']+)')\]$/);
   if (thisWrapperMatch) {
-    return thisWrapperMatch[1] ?? thisWrapperMatch[2] ?? trimmed;
+    if (typeof thisWrapperMatch[1] === 'string') {
+      return thisWrapperMatch[1];
+    }
+    if (typeof thisWrapperMatch[2] === 'string') {
+      return thisWrapperMatch[2];
+    }
+    /* istanbul ignore next: regex guarantees one of the capture groups when matched */
+    return trimmed;
   }
 
   const quotedMatch = trimmed.match(/^(?:"([^"]+)"|'([^']+)')$/);
   if (quotedMatch) {
-    return quotedMatch[1] ?? quotedMatch[2] ?? trimmed;
+    if (typeof quotedMatch[1] === 'string') {
+      return quotedMatch[1];
+    }
+    if (typeof quotedMatch[2] === 'string') {
+      return quotedMatch[2];
+    }
+    /* istanbul ignore next: regex guarantees one of the capture groups when matched */
+    return trimmed;
   }
 
   return trimmed;
@@ -401,11 +422,11 @@ class RelinkHttpApiToRouteToIntegration extends NodeRule {
   }
 }
 
-export class AwsApiGateway extends GraphPlugin<AwsApiGatewayPluginOptions> {
-  static id = pluginId(`aws.${AwsApiGateway.name}`);
+export class ApiGatewayPlugin extends GraphPlugin<AwsApiGatewayPluginOptions> {
+  static id = pluginId(`aws.${ApiGatewayPlugin.name}`);
 
   constructor() {
-    super(AwsApiGateway.id, {
+    super(ApiGatewayPlugin.id, {
       mode: 'standard',
     });
   }

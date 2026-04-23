@@ -6,7 +6,7 @@ import {
   NamedRuleSetRegistry,
   type SerializedRule,
 } from '@terra-graph/core';
-import { AwsSns } from './AwsSns.js';
+import { SnsPlugin } from './SnsPlugin.js';
 
 type SerializedPhaseStep = {
   phase: NamedPhase;
@@ -14,7 +14,7 @@ type SerializedPhaseStep = {
 };
 
 const buildPhases = (): SerializedPhaseStep[] => {
-  const plugin = new AwsSns();
+  const plugin = new SnsPlugin();
   const result = plugin.build({
     options: {},
     namedRules: new NamedRuleRegistry(),

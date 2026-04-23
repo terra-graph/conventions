@@ -94,4 +94,39 @@ describe('dataflow convention rule sets', () => {
       ]),
     );
   });
+
+  it('shoud tolerate empty resolved phases from imported rule sets', () => {
+    jest.resetModules();
+    jest.doMock('./rulesets/lambda.js', () => ({
+      __esModule: true,
+      default: { resolvePhases: () => [] },
+      lambdaPreRuleSet: { resolvePhases: () => [] },
+    }));
+    jest.doMock('./rulesets/iam.js', () => ({
+      __esModule: true,
+      default: { resolvePhases: () => [] },
+    }));
+
+    try {
+      const reloadedRuleSets = (
+        require('./rulesets.js') as {
+          default: typeof dataFlowConventionRuleSet;
+        }
+      ).default;
+
+      const pre = reloadedRuleSets
+        .resolve(conventionName(Convention.DataFlow, ruleSetName('pre')))
+        .resolvePhases(dataFlowConventionRules);
+      const semantics = reloadedRuleSets
+        .resolve(conventionName(Convention.DataFlow, ruleSetName('semantics')))
+        .resolvePhases(dataFlowConventionRules);
+
+      expect(pre).toHaveLength(1);
+      expect(semantics).toHaveLength(1);
+    } finally {
+      jest.dontMock('./rulesets/lambda.js');
+      jest.dontMock('./rulesets/iam.js');
+      jest.resetModules();
+    }
+  });
 });

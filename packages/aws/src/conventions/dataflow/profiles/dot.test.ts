@@ -8,9 +8,9 @@ import {
 } from '@terra-graph/core';
 import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
-import { AwsApiGateway } from '../../../plugins/AwsApiGateway.js';
-import { AwsIamGraphPlugin } from '../../../plugins/AwsIam.js';
-import { AwsS3 } from '../../../plugins/AwsS3.js';
+import { ApiGatewayPlugin } from '../../../plugins/ApiGatewayPlugin.js';
+import { IamPlugin } from '../../../plugins/IamPlugin.js';
+import { S3Plugin } from '../../../plugins/S3Plugin.js';
 import { Convention } from '../../index.js';
 import dataFlowConventionRules from '../rules.js';
 import dataFlowConventionRuleSet from '../rulesets.js';
@@ -98,10 +98,15 @@ describe('dataflow dot profile', () => {
       'cleanup',
     ]);
     expect(baseProfile?.plugins).toEqual([
-      { plugin: AwsS3.id },
-      { plugin: AwsApiGateway.id, options: { mode: 'minimal' } },
+      { plugin: S3Plugin.id },
       {
-        plugin: AwsIamGraphPlugin.id,
+        plugin: ApiGatewayPlugin.id,
+        slot: 'apigateway',
+        options: { mode: 'standard' },
+      },
+      {
+        plugin: IamPlugin.id,
+        slot: 'iam',
         options: { mode: 'full', removeOrphans: true },
       },
     ]);

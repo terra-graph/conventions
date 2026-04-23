@@ -14,10 +14,10 @@ import conventionDataFlowDotProfile, {
 } from './conventions/dataflow/profiles/dot.js';
 import dataFlowConventionRules from './conventions/dataflow/rules.js';
 import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
-import { AwsApiGateway } from './plugins/AwsApiGateway.js';
-import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
-import { AwsS3 } from './plugins/AwsS3.js';
-import { AwsSns } from './plugins/AwsSns.js';
+import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
+import { IamPlugin } from './plugins/IamPlugin.js';
+import { S3Plugin } from './plugins/S3Plugin.js';
+import { SnsPlugin } from './plugins/SnsPlugin.js';
 import dotRules from './rules/dot.js';
 import terraformRules from './rules/terraform.js';
 import dotRuleSet from './rulesets/dot.js';
@@ -32,10 +32,10 @@ export default (): RuntimeProvider => ({
     [conventionDataFlowBaseProfileName]: conventionDataFlowBaseProfile,
   }),
   plugins: new GraphPluginRegistry({
-    [AwsApiGateway.id]: new AwsApiGateway(),
-    [AwsIamGraphPlugin.id]: new AwsIamGraphPlugin(),
-    [AwsS3.id]: new AwsS3(),
-    [AwsSns.id]: new AwsSns(),
+    [ApiGatewayPlugin.id]: new ApiGatewayPlugin(),
+    [IamPlugin.id]: new IamPlugin(),
+    [S3Plugin.id]: new S3Plugin(),
+    [SnsPlugin.id]: new SnsPlugin(),
   }),
   supportedAdapterOperationsRegistry: {
     DotAdapter,

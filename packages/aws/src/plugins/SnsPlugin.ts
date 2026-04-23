@@ -7,11 +7,11 @@ import {
 } from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';
 
-export class AwsSns extends GraphPlugin {
-  static id = pluginId(`aws.${AwsSns.name}`);
+export class SnsPlugin extends GraphPlugin {
+  static id = pluginId(`aws.${SnsPlugin.name}`);
 
   constructor() {
-    super(AwsSns.id);
+    super(SnsPlugin.id);
   }
 
   public override build(_input: GraphPluginBuildInput): GraphPluginBuildResult {

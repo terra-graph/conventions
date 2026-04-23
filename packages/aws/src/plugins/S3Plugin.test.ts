@@ -6,8 +6,8 @@ import {
   NamedRuleSetRegistry,
   type SerializedRule,
 } from '@terra-graph/core';
-import { AwsS3 } from './AwsS3.js';
-import type { S3GraphPluginOptions } from './AwsS3.js';
+import { S3Plugin } from './S3Plugin.js';
+import type { S3GraphPluginOptions } from './S3Plugin.js';
 
 type SerializedPhaseStep = {
   phase: NamedPhase;
@@ -15,7 +15,7 @@ type SerializedPhaseStep = {
 };
 
 const buildPhases = (options: S3GraphPluginOptions = {}): SerializedPhaseStep[] => {
-  const plugin = new AwsS3();
+  const plugin = new S3Plugin();
   const result = plugin.build({
     options,
     namedRules: new NamedRuleRegistry(),
@@ -114,7 +114,7 @@ describe('AwsS3.build', () => {
 
   it('shoud use custom constructor keepResources when provided', () => {
     const keepResources = ['aws_s3_bucket', 'aws_s3_bucket_notification', 'aws_s3_access_point'];
-    const plugin = new AwsS3({ keepResources });
+    const plugin = new S3Plugin({ keepResources });
     expect(plugin.defaults).toStrictEqual({ keepResources });
   });
 });

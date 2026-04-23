@@ -6,10 +6,10 @@ import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
 import { Convention } from './conventions/index.js';
 import buildRuntimeProvider, { AwsEdgeDirectionSemantics } from './index.js';
 import { conventionName, ruleName, ruleSetName } from './namespaces.js';
-import { AwsApiGateway } from './plugins/AwsApiGateway.js';
-import { AwsIamGraphPlugin } from './plugins/AwsIam.js';
-import { AwsS3 } from './plugins/AwsS3.js';
-import { AwsSns } from './plugins/AwsSns.js';
+import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
+import { IamPlugin } from './plugins/IamPlugin.js';
+import { S3Plugin } from './plugins/S3Plugin.js';
+import { SnsPlugin } from './plugins/SnsPlugin.js';
 
 const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
   const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } =
@@ -34,7 +34,7 @@ describe('aws provider', () => {
 
     expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
     expect(plugins.names().sort()).toStrictEqual(
-      [AwsApiGateway.id, AwsIamGraphPlugin.id, AwsS3.id, AwsSns.id].sort(),
+      [ApiGatewayPlugin.id, IamPlugin.id, S3Plugin.id, SnsPlugin.id].sort(),
     );
     expect(namedRules.names().sort()).toEqual(
       [

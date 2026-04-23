@@ -17,15 +17,15 @@ export type S3GraphPluginConstructorOptions = {
   keepResources?: string[];
 };
 // TODO: this feels like part of conventions not a usefule plugin
-export class AwsS3 extends GraphPlugin<S3GraphPluginOptions> {
-  static id = pluginId(`aws.${AwsS3.name}`);
+export class S3Plugin extends GraphPlugin<S3GraphPluginOptions> {
+  static id = pluginId(`aws.${S3Plugin.name}`);
 
   constructor(options: S3GraphPluginConstructorOptions = {}) {
     const keepResources = Array.isArray(options.keepResources)
       ? options.keepResources
       : S3_DEFAULT_KEEP_RESOURCES;
 
-    super(AwsS3.id, {
+    super(S3Plugin.id, {
       keepResources: [...keepResources],
     });
   }

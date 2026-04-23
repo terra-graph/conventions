@@ -1275,10 +1275,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
-"@terra-graph/core@^1.0.0-rc.11":
-  version "1.0.0-rc.11"
-  resolved "https://registry.yarnpkg.com/@terra-graph/core/-/core-1.0.0-rc.11.tgz#2c6ab8569be689e81c9f077c41afc6d8c19e4b83"
-  integrity sha512-LvGWfQJ5CT7kC1Xjxq/beXNQtM8BaKmbJAhqFe4btfSfp+UkRdr0ENwc3RgwF3D77aHM2Y5EWfGyfsNCdcWZPg==
+"@terra-graph/core@^1.0.0-rc.12":
+  version "1.0.0-rc.12"
+  resolved "https://registry.yarnpkg.com/@terra-graph/core/-/core-1.0.0-rc.12.tgz#2db5df42faa6d7ab42e694bc4acaf89de22cd8aa"
+  integrity sha512-IBTrj4ibwYZUQWpKa3BRzYDuZfJhN8LW14odHyZbQsI5wJliShHV4g34b4bnm+WuMFUyUaxRtJPe/AfiQy99cQ==
   dependencies:
     graphlib-dot "^0.6.4"
     graphology "^0.26.0"

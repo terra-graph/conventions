@@ -10,13 +10,7 @@ const serialize = (name: string): SerializedRule => {
 
 describe('general rules', () => {
   it('shoud expose all general named rules', () => {
-    expect(generalRules.names().sort()).toStrictEqual(
-      [
-        ruleName('data.remove'),
-        ruleName('lambda.only_event_source_mapping'),
-        ruleName('log_groups.only_event_bridge'),
-      ].sort(),
-    );
+    expect(generalRules.names().sort()).toStrictEqual([ruleName('data.remove')]);
   });
 
   it('shoud remove data nodes except policy artifacts by default', () => {
@@ -44,8 +38,12 @@ describe('general rules', () => {
     });
   });
 
-  it('shoud remove non-event-bridge log groups and non-core lambda resources by query', () => {
-    expect(serialize(ruleName('log_groups.only_event_bridge')).id).toBe('RemoveNode');
-    expect(serialize(ruleName('lambda.only_event_source_mapping')).id).toBe('RemoveNode');
+  it('shoud not expose removed legacy terraform cleanup rules', () => {
+    expect(() => generalRules.resolve(ruleName('log_groups.only_event_bridge'))).toThrow(
+      "Named rule '@terra-graph/conventions-aws:rule:log_groups.only_event_bridge' is not registered",
+    );
+    expect(() => generalRules.resolve(ruleName('lambda.only_event_source_mapping'))).toThrow(
+      "Named rule '@terra-graph/conventions-aws:rule:lambda.only_event_source_mapping' is not registered",
+    );
   });
 });
