@@ -1,3 +1,13 @@
+## [1.0.0-rc.12](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.11...@terra-graph/conventions-core@1.0.0-rc.12) (2026-04-23)
+
+### Features
+
+* add ApiGatewayPlugin ([dd93334](https://github.com/terra-graph/conventions/commit/dd93334ae73a99323ea266df7e4b94577504455a))
+
+### Bug Fixes
+
+* tess ([397ff3f](https://github.com/terra-graph/conventions/commit/397ff3f7498af3e68d49026d84dd5e30949a8f96))
+
 ## [1.0.0-rc.11](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.10...@terra-graph/conventions-core@1.0.0-rc.11) (2026-04-17)
 
 ### Bug Fixes
