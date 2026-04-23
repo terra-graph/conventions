@@ -1,3 +1,14 @@
+## [1.0.0-rc.5](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.4...@terra-graph/conventions-aws@1.0.0-rc.5) (2026-04-23)
+
+### Features
+
+* add ApiGatewayPlugin ([dd93334](https://github.com/terra-graph/conventions/commit/dd93334ae73a99323ea266df7e4b94577504455a))
+* implement loopback edges fix ([33f0f22](https://github.com/terra-graph/conventions/commit/33f0f226b7cb6f618317fbc22f5c20dee457a8aa))
+
+### Bug Fixes
+
+* compile errors ([19f7bc4](https://github.com/terra-graph/conventions/commit/19f7bc4101bb46b9e4b652110216a0e02988e1cb))
+
 ## [1.0.0-rc.4](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.3...@terra-graph/conventions-aws@1.0.0-rc.4) (2026-04-17)
 
 ### Bug Fixes
