@@ -1,3 +1,9 @@
+## [1.0.0-rc.13](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.12...@terra-graph/conventions-core@1.0.0-rc.13) (2026-04-23)
+
+### Features
+
+* implement loopback edges fix ([33f0f22](https://github.com/terra-graph/conventions/commit/33f0f226b7cb6f618317fbc22f5c20dee457a8aa))
+
 ## [1.0.0-rc.12](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.11...@terra-graph/conventions-core@1.0.0-rc.12) (2026-04-23)
 
 ### Features
