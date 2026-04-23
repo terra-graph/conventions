@@ -56,6 +56,13 @@ const baseNamedRules = new NamedRuleRegistry({
       and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],
     },
   }),
+  'core.remove.self_loops': new RemoveNode({
+    node: {
+      nodeId: {
+        eq: '__never__',
+      },
+    },
+  }),
   'dot.normalise_modules': new NodeDotProperties({
     options: {
       peripheries: 0,

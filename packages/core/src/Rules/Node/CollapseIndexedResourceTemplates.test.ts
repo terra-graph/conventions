@@ -336,4 +336,62 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
 
     expect(result.getNodeAttributes(indexed)).toEqual(node);
   });
+
+  it('should not create self-loop edges when collapsing a template', () => {
+    const external = asNodeId('resource.aws_sns_topic.external');
+    const template = asNodeId('resource.module.fn.aws_lambda_function.this');
+    const indexed = asNodeId('resource.module.fn.aws_lambda_function.this[0]');
+
+    const tg: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [external]: {
+          id: external,
+          label: 'external',
+          terraform: { kind: 'resource', address: 'aws_sns_topic.external' },
+        },
+        [template]: {
+          id: template,
+          label: 'template',
+          terraform: {
+            kind: 'resource',
+            address: 'module.fn.aws_lambda_function.this',
+            resource: 'aws_lambda_function',
+            name: 'this',
+          },
+        },
+        [indexed]: {
+          id: indexed,
+          label: 'indexed',
+          terraform: {
+            kind: 'resource',
+            address: 'module.fn.aws_lambda_function.this[0]',
+            resource: 'aws_lambda_function',
+            name: 'this',
+          },
+        },
+      },
+      edges: [
+        { id: asEdgeId('edge-ext-template'), from: external, to: template, attributes: {} },
+        { id: asEdgeId('edge-template-ext'), from: template, to: external, attributes: {} },
+      ],
+    };
+
+    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const node = adapter.getNodeAttributes(template);
+    if (!node) {
+      throw new Error('Missing node attributes for template node');
+    }
+
+    const rule = new CollapseIndexedResourceTemplates({
+      node: { nodeId: { eq: template.toString() } },
+    });
+
+    rule.match(template, node, adapter);
+    const result = rule.apply(template, node, adapter);
+
+    expect(result.getNodeAttributes(template)).toBeUndefined();
+    expect(result.edgesBetween(external, external)).toHaveLength(0);
+  });
 });

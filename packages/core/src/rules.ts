@@ -1,4 +1,9 @@
-import { NamedRuleRegistry, RemoveNode, RemoveNodeAndReconnectEdges } from '@terra-graph/core';
+import {
+  NamedRuleRegistry,
+  RemoveNode,
+  RemoveNodeAndReconnectEdges,
+  RemoveSelfLoopEdges,
+} from '@terra-graph/core';
 import { CollapseIndexedResourceTemplates } from './Rules/Node/CollapseIndexedResourceTemplates.js';
 
 export const coreNamedRules = new NamedRuleRegistry({
@@ -76,6 +81,12 @@ export const coreNamedRules = new NamedRuleRegistry({
   'core.remove.childless_modules': new RemoveNode({
     node: {
       and: [{ attr: { key: 'terraform.kind', eq: 'module' } }, { children: { exists: false } }],
+    },
+  }),
+  'core.remove.self_loops': new RemoveSelfLoopEdges({
+    edge: {
+      from: { any: true },
+      to: { any: true },
     },
   }),
 });

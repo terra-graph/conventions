@@ -63,6 +63,9 @@ export class CollapseIndexedResourceTemplates extends NodeRule {
 
       for (const outEdgeId of outEdges) {
         const targetId = updated.edgeTarget(outEdgeId);
+        if (sourceId === targetId) {
+          continue;
+        }
         const outEdgeAttributes = updated.getEdgeAttributes(outEdgeId);
         const redirectEdgeId = edgeIdFrom(
           sourceId,

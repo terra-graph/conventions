@@ -13,6 +13,10 @@ export const coreBase = new Profile(profileName('base'), {
         { namedRule: 'core.remove.childless_modules' },
       ],
     },
+    {
+      phase: 'cleanup',
+      rules: [{ namedRule: 'core.remove.self_loops' }],
+    },
   ],
 });
 
