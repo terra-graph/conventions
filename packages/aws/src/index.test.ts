@@ -8,6 +8,8 @@ import buildRuntimeProvider, { AwsEdgeDirectionSemantics } from './index.js';
 import { conventionName, ruleName, ruleSetName } from './namespaces.js';
 import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
 import { IamPlugin } from './plugins/IamPlugin.js';
+import { AwsNetworkPlacementPlugin } from './plugins/Network/AwsNetworkPlacementPlugin.js';
+import { VpcTopologyPlugin } from './plugins/Network/VpcTopologyPlugin.js';
 import { S3Plugin } from './plugins/S3Plugin.js';
 import { SnsPlugin } from './plugins/SnsPlugin.js';
 
@@ -34,7 +36,14 @@ describe('aws provider', () => {
 
     expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
     expect(plugins.names().sort()).toStrictEqual(
-      [ApiGatewayPlugin.id, IamPlugin.id, S3Plugin.id, SnsPlugin.id].sort(),
+      [
+        ApiGatewayPlugin.id,
+        AwsNetworkPlacementPlugin.id,
+        VpcTopologyPlugin.id,
+        IamPlugin.id,
+        S3Plugin.id,
+        SnsPlugin.id,
+      ].sort(),
     );
     expect(namedRules.names().sort()).toEqual(
       [

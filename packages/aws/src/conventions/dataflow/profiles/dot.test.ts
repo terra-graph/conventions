@@ -10,6 +10,8 @@ import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
 import { ApiGatewayPlugin } from '../../../plugins/ApiGatewayPlugin.js';
 import { IamPlugin } from '../../../plugins/IamPlugin.js';
+import { AwsNetworkPlacementPlugin } from '../../../plugins/Network/AwsNetworkPlacementPlugin.js';
+import { VpcTopologyPlugin } from '../../../plugins/Network/VpcTopologyPlugin.js';
 import { S3Plugin } from '../../../plugins/S3Plugin.js';
 import { Convention } from '../../index.js';
 import dataFlowConventionRules from '../rules.js';
@@ -99,6 +101,15 @@ describe('dataflow dot profile', () => {
     ]);
     expect(baseProfile?.plugins).toEqual([
       { plugin: S3Plugin.id },
+      {
+        plugin: VpcTopologyPlugin.id,
+        slot: 'topology',
+      },
+      {
+        plugin: AwsNetworkPlacementPlugin.id,
+        slot: 'topology-placement',
+        options: { enrichers: ['rds', 'elasticache', 'ecs', 'network'] },
+      },
       {
         plugin: ApiGatewayPlugin.id,
         slot: 'apigateway',
