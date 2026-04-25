@@ -1,3 +1,10 @@
+## [1.0.0-rc.6](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.5...@terra-graph/conventions-aws@1.0.0-rc.6) (2026-04-25)
+
+### Features
+
+* improved network management ([5be1c9e](https://github.com/terra-graph/conventions/commit/5be1c9e751400a21ad30ce0479842788612f31ff))
+* initial network topology ([568d273](https://github.com/terra-graph/conventions/commit/568d2737c0dce1cc5ebaf8e9bbe21f6809af28ad))
+
 ## [1.0.0-rc.5](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.4...@terra-graph/conventions-aws@1.0.0-rc.5) (2026-04-23)
 
 ### Features
