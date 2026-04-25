@@ -1,3 +1,9 @@
+## [1.0.0-rc.15](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.14...@terra-graph/conventions-core@1.0.0-rc.15) (2026-04-25)
+
+### Features
+
+* initial network topology ([568d273](https://github.com/terra-graph/conventions/commit/568d2737c0dce1cc5ebaf8e9bbe21f6809af28ad))
+
 ## [1.0.0-rc.14](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.13...@terra-graph/conventions-core@1.0.0-rc.14) (2026-04-23)
 
 ### Bug Fixes
