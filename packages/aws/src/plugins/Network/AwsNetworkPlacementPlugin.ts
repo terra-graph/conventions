@@ -37,6 +37,7 @@ import {
 const VPC_RESOURCE = 'aws_vpc';
 const SUBNET_RESOURCE = 'aws_subnet';
 const REPLICA_NODE_SEGMENT = ':replica:subnet:';
+const CLONE_ENRICHER_IDS = new Set<string>(['rds', 'elasticache', 'ecs']);
 
 type CloneEdgeSnapshot = {
   id: string;
@@ -161,6 +162,9 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       const matchingEnrichers = enabledEnrichers.filter((enricher) =>
         resource ? enricher.resources.has(resource) : false,
       );
+      const shouldCloneMultiSubnet = matchingEnrichers.some((enricher) =>
+        CLONE_ENRICHER_IDS.has(enricher.id),
+      );
 
       for (const enricher of matchingEnrichers) {
         enricher.apply({
@@ -224,7 +228,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         const uniqueSubnetVpcKeys = [...new Set(subnetVpcKeys)];
         if (uniqueSubnetVpcKeys.length === 1) {
           if (
-            matchingEnrichers.length > 0 &&
+            shouldCloneMultiSubnet &&
             subnetVpcKeys.length === sortedSubnetKeys.length &&
             sortedSubnetKeys.length > 0
           ) {
@@ -270,6 +274,11 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
           }
 
           placements.set(currentNodeId, buildVpcScopeId(uniqueSubnetVpcKeys[0]));
+        } else if (matchingEnrichers.length > 0) {
+          const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
+          if (fallbackVpcKey) {
+            placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
+          }
         }
 
         continue;
@@ -277,8 +286,11 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
       if (vpcKeys.size === 1) {
         placements.set(currentNodeId, buildVpcScopeId([...vpcKeys][0]));
-      } else if (matchingEnrichers.length > 0 && context.vpcs.size === 1) {
-        placements.set(currentNodeId, buildVpcScopeId([...context.vpcs.keys()][0]));
+      } else if (matchingEnrichers.length > 0) {
+        const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
+        if (fallbackVpcKey) {
+          placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
+        }
       }
     }
 
@@ -485,6 +497,26 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
     return buildSubnetScopeId(subnet.vpcKey, az, subnetKey);
   }
 
+  private resolveSinglePlaceableVpcKey(context: PlacementContext): string | undefined {
+    const candidateVpcKeys = new Set<string>();
+
+    for (const vpcKey of context.vpcNodeToKey.values()) {
+      candidateVpcKeys.add(vpcKey);
+    }
+
+    for (const subnet of context.subnets.values()) {
+      if (subnet.vpcKey) {
+        candidateVpcKeys.add(subnet.vpcKey);
+      }
+    }
+
+    if (candidateVpcKeys.size === 1) {
+      return [...candidateVpcKeys][0];
+    }
+
+    return undefined;
+  }
+
   private upsertScope(
     graph: AdapterOperations,
     nodeId: NodeId,
@@ -524,6 +556,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       for (const subnetKey of cloneSubnetKeys) {
         const cloneNodeId = buildReplicaNodeId(clonePlan.sourceNodeId, subnetKey);
         const cloneScopeId = clonePlan.subnetScopeIds[subnetKey];
+        /* istanbul ignore next -- defensive guard for malformed clone plans */
         if (!cloneScopeId) {
           continue;
         }

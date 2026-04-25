@@ -741,4 +741,216 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
       scopes?.[`vpc:${String(vpcFromNodeId)}:az:unknown:subnet:aws_subnet.by_nodeid`],
     ).toBeDefined();
   });
+
+  it('shoud attach inferred subnet references to referenced vpc ids', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected topology rule');
+    }
+
+    const lambdaId = asNodeId('resource.aws_lambda_function.inferred');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [lambdaId]: {
+          id: lambdaId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.inferred',
+            resource: 'aws_lambda_function',
+            name: 'inferred',
+            state: buildTerraformState('aws_lambda_function.inferred', {
+              vpc_id: 'vpc-ref',
+              subnet_ids: ['subnet-ref'],
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const scopes = (
+      updated.toTgGraph() as TgGraph & {
+        hints?: {
+          topology?: {
+            scopes?: Record<string, unknown>;
+          };
+        };
+      }
+    ).hints?.topology?.scopes;
+
+    expect(scopes?.['vpc:vpc-ref']).toBeDefined();
+    expect(scopes?.['vpc:vpc-ref:az:unknown:subnet:subnet-ref']).toBeDefined();
+  });
+
+  it('shoud infer missing vpc identifier mappings from subnet vpc references', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected topology rule');
+    }
+
+    let readCount = 0;
+    const values = {
+      id: 'subnet-dynamic',
+      get vpc_id() {
+        readCount += 1;
+        return readCount === 1 ? undefined : 'vpc-dynamic';
+      },
+    } as Record<string, unknown>;
+
+    const subnetId = asNodeId('resource.aws_subnet.dynamic');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.dynamic',
+            resource: 'aws_subnet',
+            name: 'dynamic',
+            state: buildTerraformState('aws_subnet.dynamic', values),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const scopes = (
+      updated.toTgGraph() as TgGraph & {
+        hints?: {
+          topology?: {
+            scopes?: Record<string, unknown>;
+          };
+        };
+      }
+    ).hints?.topology?.scopes;
+
+    expect(scopes?.['vpc:vpc-dynamic']).toBeDefined();
+    expect(scopes?.['vpc:vpc-dynamic:az:unknown:subnet:subnet-dynamic']).toBeDefined();
+  });
+
+  it('shoud tolerate subnet nodes disappearing after the indexing pass', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected topology rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetId = asNodeId('resource.aws_subnet.ephemeral');
+    const vpcNode: TgGraph['nodes'][string] = {
+      id: vpcId,
+      terraform: {
+        kind: 'resource',
+        address: 'aws_vpc.main',
+        resource: 'aws_vpc',
+        name: 'main',
+        state: buildTerraformState('aws_vpc.main', {
+          id: 'vpc-main',
+        }),
+      },
+    };
+    const subnetNode: TgGraph['nodes'][string] = {
+      id: subnetId,
+      terraform: {
+        kind: 'resource',
+        address: 'aws_subnet.ephemeral',
+        resource: 'aws_subnet',
+        name: 'ephemeral',
+        state: buildTerraformState('aws_subnet.ephemeral', {
+          id: 'subnet-ephemeral',
+        }),
+      },
+    };
+
+    let subnetLookups = 0;
+    const adapter = {
+      nodeIds: () => [subnetId, vpcId],
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId === vpcId) {
+          return vpcNode;
+        }
+        if (nodeId !== subnetId) {
+          return undefined;
+        }
+
+        subnetLookups += 1;
+        return subnetLookups <= 2 ? subnetNode : undefined;
+      },
+      predecessors: () => [],
+      successors: () => [],
+      getGraphHints: () => undefined,
+      setGraphHints: () => adapter,
+    } as unknown as AdapterOperations;
+
+    const startNode = adapter.getNodeAttributes(subnetId);
+    if (!startNode) {
+      throw new Error('Expected start node');
+    }
+
+    rule.match(subnetId, startNode, adapter);
+    const updated = rule.apply(subnetId, startNode, adapter);
+    expect(updated).toBe(adapter);
+  });
+
+  it('shoud fallback subnet key to node id when id name address and terraform address are unavailable', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected topology rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.singleton');
+    const subnetId = asNodeId('resource.aws_subnet.key_from_nodeid');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.singleton',
+            resource: 'aws_vpc',
+            name: 'singleton',
+            state: buildTerraformState('aws_vpc.singleton', {
+              id: 'vpc-singleton',
+            }),
+          },
+        },
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: ' ',
+            resource: 'aws_subnet',
+            name: ' ',
+            state: {
+              source: 'state_show',
+              effective: null,
+              instances: [],
+            },
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const scopes = (
+      updated.toTgGraph() as TgGraph & {
+        hints?: {
+          topology?: {
+            scopes?: Record<string, unknown>;
+          };
+        };
+      }
+    ).hints?.topology?.scopes;
+
+    expect(scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`]).toBeDefined();
+  });
 });

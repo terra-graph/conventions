@@ -24,6 +24,8 @@ const NAT_GATEWAY_RESOURCE = 'aws_nat_gateway';
 const INTERNET_GATEWAY_RESOURCE = 'aws_internet_gateway';
 const EGRESS_ONLY_INTERNET_GATEWAY_RESOURCE = 'aws_egress_only_internet_gateway';
 const VPC_ENDPOINT_RESOURCE = 'aws_vpc_endpoint';
+const LOAD_BALANCER_RESOURCE = 'aws_lb';
+const LOAD_BALANCER_LISTENER_RESOURCE = 'aws_lb_listener';
 
 const GROUP_KIND_SECURITY_GROUP = 'network.security_group';
 const GROUP_KIND_ROUTE_TABLE = 'network.route_table';
@@ -31,6 +33,7 @@ const GROUP_KIND_NETWORK_ACL = 'network.network_acl';
 const GROUP_KIND_NAT_GATEWAY = 'network.nat_gateway';
 const GROUP_KIND_INTERNET_GATEWAY = 'network.internet_gateway';
 const GROUP_KIND_VPC_ENDPOINT = 'network.vpc_endpoint';
+const GROUP_KIND_LOAD_BALANCER = 'network.load_balancer';
 
 const INDEXED_GROUP_KIND_BY_RESOURCE: Record<string, string> = {
   [SECURITY_GROUP_RESOURCE]: GROUP_KIND_SECURITY_GROUP,
@@ -40,6 +43,7 @@ const INDEXED_GROUP_KIND_BY_RESOURCE: Record<string, string> = {
   [INTERNET_GATEWAY_RESOURCE]: GROUP_KIND_INTERNET_GATEWAY,
   [EGRESS_ONLY_INTERNET_GATEWAY_RESOURCE]: GROUP_KIND_INTERNET_GATEWAY,
   [VPC_ENDPOINT_RESOURCE]: GROUP_KIND_VPC_ENDPOINT,
+  [LOAD_BALANCER_RESOURCE]: GROUP_KIND_LOAD_BALANCER,
 };
 
 const NETWORK_PLACEMENT_RESOURCES = new Set<string>([
@@ -56,6 +60,7 @@ const NETWORK_PLACEMENT_RESOURCES = new Set<string>([
   INTERNET_GATEWAY_RESOURCE,
   EGRESS_ONLY_INTERNET_GATEWAY_RESOURCE,
   VPC_ENDPOINT_RESOURCE,
+  LOAD_BALANCER_LISTENER_RESOURCE,
 ]);
 
 const ensureVpcKeyFromIdentifier = (
@@ -98,6 +103,7 @@ const resolveVpcAndSubnetFromNode = (
 
   addSubnetIdentifiers(
     [
+      ...toStringArray(values.subnets),
       ...toStringArray(values.subnet_ids),
       ...[toStringValue(values.subnet_id)].filter((entry): entry is string => entry !== undefined),
     ],
@@ -149,7 +155,9 @@ const linkNodeIdentifiers = (
 ): void => {
   const groupMap = getOrCreateGroupNodeMap(context, groupKind);
   const stateId = toStringValue(values.id);
+  const stateArn = toStringValue(values.arn);
   linkGroupIdentifier(groupMap, stateId, nodeId);
+  linkGroupIdentifier(groupMap, stateArn, nodeId);
   linkGroupIdentifier(groupMap, toStringValue(values.name), nodeId);
   linkGroupIdentifier(groupMap, name, nodeId);
   linkGroupIdentifier(groupMap, address, nodeId);
@@ -230,6 +238,13 @@ export const NetworkPlacementEnricher: PlacementEnricher = {
     resolveFromGroupIdentifier(
       GROUP_KIND_VPC_ENDPOINT,
       toStringValue(values.vpc_endpoint_id),
+      context,
+      subnetKeys,
+      vpcKeys,
+    );
+    resolveFromGroupIdentifier(
+      GROUP_KIND_LOAD_BALANCER,
+      toStringValue(values.load_balancer_arn) ?? toStringValue(values.load_balancer_id),
       context,
       subnetKeys,
       vpcKeys,

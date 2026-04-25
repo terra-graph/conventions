@@ -70,6 +70,7 @@ export const resolveReferencedSubnetIds = (values: Record<string, unknown>): str
   for (const subnetId of [
     ...toStringArray(values.subnet_ids),
     ...toStringArray(values.subnets),
+    ...toStringArray(values.vpc_zone_identifier),
     ...[toStringValue(values.subnet_id)].filter((entry): entry is string => entry !== undefined),
   ]) {
     subnetIds.add(subnetId);

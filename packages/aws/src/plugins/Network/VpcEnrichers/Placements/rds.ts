@@ -14,7 +14,7 @@ const DB_SUBNET_GROUP_RESOURCE = 'aws_db_subnet_group';
 
 export const RdsPlacementEnricher: PlacementEnricher = {
   id: 'rds',
-  resources: new Set<string>([DB_INSTANCE_RESOURCE]),
+  resources: new Set<string>([DB_INSTANCE_RESOURCE, DB_SUBNET_GROUP_RESOURCE]),
   indexNode: ({ nodeId, values, context, resource, name, address }) => {
     if (resource !== DB_SUBNET_GROUP_RESOURCE) {
       return;

@@ -333,6 +333,119 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
   });
 
+  it('shoud place autoscaling groups from vpc_zone_identifier with edge fallback when omitted', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.a');
+    const subnetBId = asNodeId('resource.aws_subnet.b');
+    const asgSingleId = asNodeId('resource.aws_autoscaling_group.single');
+    const asgMultiId = asNodeId('resource.aws_autoscaling_group.multi');
+    const asgFallbackId = asNodeId('resource.aws_autoscaling_group.fallback');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.a',
+            resource: 'aws_subnet',
+            name: 'a',
+            state: buildTerraformState('aws_subnet.a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.b',
+            resource: 'aws_subnet',
+            name: 'b',
+            state: buildTerraformState('aws_subnet.b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [asgSingleId]: {
+          id: asgSingleId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_autoscaling_group.single',
+            resource: 'aws_autoscaling_group',
+            name: 'single',
+            state: buildTerraformState('aws_autoscaling_group.single', {
+              vpc_zone_identifier: ['subnet-a'],
+            }),
+          },
+        },
+        [asgMultiId]: {
+          id: asgMultiId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_autoscaling_group.multi',
+            resource: 'aws_autoscaling_group',
+            name: 'multi',
+            state: buildTerraformState('aws_autoscaling_group.multi', {
+              vpc_zone_identifier: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+        [asgFallbackId]: {
+          id: asgFallbackId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_autoscaling_group.fallback',
+            resource: 'aws_autoscaling_group',
+            name: 'fallback',
+            state: buildTerraformState('aws_autoscaling_group.fallback', {}),
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-asg-fallback-subnet-b'),
+          from: asgFallbackId,
+          to: subnetBId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+
+    expect(updated.getNodeAttributes(asgSingleId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+    expect(updated.getNodeAttributes(asgMultiId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
+    expect(updated.getNodeAttributes(asgFallbackId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+  });
+
   it('shoud use edge fallback and inferred references when state fields are missing', () => {
     const [rule] = buildRules();
     if (!rule) {
@@ -526,8 +639,12 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const vpcId = asNodeId('resource.module.vpc.aws_vpc.this[0]');
     const subnetAId = asNodeId('resource.module.vpc.aws_subnet.private[0]');
     const subnetBId = asNodeId('resource.module.vpc.aws_subnet.private[1]');
+    const dbSubnetGroupId = asNodeId(
+      'resource.module.db.module.db_subnet_group.aws_db_subnet_group.this[0]',
+    );
     const dbId = asNodeId('resource.module.db.module.db_instance.aws_db_instance.this[0]');
     const sgId = asNodeId('resource.module.rds_sg.aws_security_group.this');
+    const unrelatedLambdaId = asNodeId('resource.aws_lambda_function.unrelated');
 
     const adapter = buildAdapter({
       schemaVersion: TG_SCHEMA_VERSION,
@@ -567,6 +684,19 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             }),
           },
         },
+        [dbSubnetGroupId]: {
+          id: dbSubnetGroupId,
+          terraform: {
+            kind: 'resource',
+            address: 'module.db.module.db_subnet_group.aws_db_subnet_group.this[0]',
+            resource: 'aws_db_subnet_group',
+            name: 'this[0]',
+            state: buildTerraformState(
+              'module.db.module.db_subnet_group.aws_db_subnet_group.this[0]',
+              {},
+            ),
+          },
+        },
         [dbId]: {
           id: dbId,
           terraform: {
@@ -586,6 +716,22 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             name: 'this',
           },
         },
+        [unrelatedLambdaId]: {
+          id: unrelatedLambdaId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.unrelated',
+            resource: 'aws_lambda_function',
+            name: 'unrelated',
+            state: buildTerraformState('aws_lambda_function.unrelated', {
+              vpc_config: [
+                {
+                  vpc_id: 'vpc-unresolved',
+                },
+              ],
+            }),
+          },
+        },
       },
       edges: [],
     });
@@ -597,6 +743,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
     expect(updated.getNodeAttributes(subnetBId)?.hints?.topology?.scopeId).toBe(
       'vpc:this[0]:az:eu-west-2b:subnet:private[1]',
+    );
+    expect(updated.getNodeAttributes(dbSubnetGroupId)?.hints?.topology?.scopeId).toBe(
+      'vpc:this[0]',
     );
     expect(updated.getNodeAttributes(dbId)?.hints?.topology?.scopeId).toBe('vpc:this[0]');
     expect(updated.getNodeAttributes(sgId)?.hints?.topology?.scopeId).toBe('vpc:this[0]');
@@ -708,6 +857,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     const vpcId = asNodeId('resource.aws_vpc.main');
     const subnetId = asNodeId('resource.aws_subnet.private_a');
+    const subnetBId = asNodeId('resource.aws_subnet.private_b');
     const sgId = asNodeId('resource.aws_security_group.app');
     const sgRuleId = asNodeId('resource.aws_vpc_security_group_ingress_rule.app_from_vpc');
     const routeTableId = asNodeId('resource.aws_route_table.private');
@@ -715,6 +865,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const routeId = asNodeId('resource.aws_route.private_default');
     const naclId = asNodeId('resource.aws_network_acl.private');
     const naclRuleId = asNodeId('resource.aws_network_acl_rule.private_allow');
+    const loadBalancerId = asNodeId('resource.aws_lb.app');
+    const listenerByArnId = asNodeId('resource.aws_lb_listener.by_arn');
+    const listenerByEdgeId = asNodeId('resource.aws_lb_listener.by_edge');
 
     const graph: TgGraph = {
       schemaVersion: TG_SCHEMA_VERSION,
@@ -741,6 +894,20 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
               id: 'subnet-1',
               vpc_id: 'vpc-1',
               availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_b',
+            resource: 'aws_subnet',
+            name: 'private_b',
+            state: buildTerraformState('aws_subnet.private_b', {
+              id: 'subnet-2',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
             }),
           },
         },
@@ -833,12 +1000,55 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             }),
           },
         },
+        [loadBalancerId]: {
+          id: loadBalancerId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.app',
+            resource: 'aws_lb',
+            name: 'app',
+            state: buildTerraformState('aws_lb.app', {
+              id: 'app-lb',
+              arn: 'arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/app/123',
+              subnets: ['subnet-1', 'subnet-2'],
+            }),
+          },
+        },
+        [listenerByArnId]: {
+          id: listenerByArnId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb_listener.by_arn',
+            resource: 'aws_lb_listener',
+            name: 'by_arn',
+            state: buildTerraformState('aws_lb_listener.by_arn', {
+              load_balancer_arn:
+                'arn:aws:elasticloadbalancing:eu-west-2:111122223333:loadbalancer/app/app/123',
+            }),
+          },
+        },
+        [listenerByEdgeId]: {
+          id: listenerByEdgeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb_listener.by_edge',
+            resource: 'aws_lb_listener',
+            name: 'by_edge',
+            state: buildTerraformState('aws_lb_listener.by_edge', {}),
+          },
+        },
       },
       edges: [
         {
           id: asEdgeId('edge-subnet-vpc'),
           from: subnetId,
           to: vpcId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-listener-edge-lb'),
+          from: listenerByEdgeId,
+          to: loadBalancerId,
           attributes: {},
         },
       ],
@@ -849,11 +1059,19 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     expect(withoutEnricher.getNodeAttributes(sgRuleId)?.hints?.topology).toBeUndefined();
     expect(withoutEnricher.getNodeAttributes(naclRuleId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(listenerByArnId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(listenerByEdgeId)?.hints?.topology).toBeUndefined();
 
     expect(withEnricher.getNodeAttributes(sgRuleId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
     expect(withEnricher.getNodeAttributes(naclRuleId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
     expect(withEnricher.getNodeAttributes(routeId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2a:subnet:subnet-1',
+    );
+    expect(withEnricher.getNodeAttributes(listenerByArnId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+    expect(withEnricher.getNodeAttributes(listenerByEdgeId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
     );
   });
 
@@ -2185,5 +2403,297 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(
       minimalView.outEdges(appId).some((edgeId) => minimalView.edgeTarget(edgeId) === vpcId),
     ).toBe(true);
+  });
+
+  it('shoud infer and place direct vpc references without explicit vpc resource nodes', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const sgId = asNodeId('resource.aws_security_group.inferred');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [sgId]: {
+          id: sgId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.inferred',
+            resource: 'aws_security_group',
+            name: 'inferred',
+            state: buildTerraformState('aws_security_group.inferred', {
+              vpc_id: 'vpc-inferred-direct',
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(sgId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-inferred-direct',
+    );
+  });
+
+  it('shoud infer late vpc identifiers that appear only during placement resolution', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    let readCount = 0;
+    const values = {
+      get vpc_id() {
+        readCount += 1;
+        return readCount === 1 ? undefined : 'vpc-late';
+      },
+    } as Record<string, unknown>;
+
+    const sgId = asNodeId('resource.aws_security_group.late');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [sgId]: {
+          id: sgId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.late',
+            resource: 'aws_security_group',
+            name: 'late',
+            state: buildTerraformState('aws_security_group.late', values),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(sgId)?.hints?.topology?.scopeId).toBe('vpc:vpc-late');
+  });
+
+  it('shoud fallback multi-subnet enricher-managed resources to a single placeable vpc', () => {
+    const [rule] = buildRules({ enrichers: ['rds'] });
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const externalSgId = asNodeId('resource.aws_security_group.external');
+    const subnetGroupId = asNodeId('resource.aws_db_subnet_group.fallback');
+    const dbId = asNodeId('resource.aws_db_instance.fallback');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [externalSgId]: {
+          id: externalSgId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.external',
+            resource: 'aws_security_group',
+            name: 'external',
+            state: buildTerraformState('aws_security_group.external', {
+              vpc_id: 'vpc-external',
+            }),
+          },
+        },
+        [subnetGroupId]: {
+          id: subnetGroupId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_db_subnet_group.fallback',
+            resource: 'aws_db_subnet_group',
+            name: 'fallback',
+            state: buildTerraformState('aws_db_subnet_group.fallback', {
+              name: 'fallback-subnets',
+              subnet_ids: ['subnet-fallback-a', 'subnet-fallback-b'],
+            }),
+          },
+        },
+        [dbId]: {
+          id: dbId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_db_instance.fallback',
+            resource: 'aws_db_instance',
+            name: 'fallback',
+            state: buildTerraformState('aws_db_instance.fallback', {
+              db_subnet_group_name: 'fallback-subnets',
+            }),
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-db-to-subnet-group-fallback'),
+          from: dbId,
+          to: subnetGroupId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(dbId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
+    expect(updated.getNodeAttributes(externalSgId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-external',
+    );
+    expect(
+      updated.getNodeAttributes(asNodeId(`${String(dbId)}:replica:subnet:subnet-fallback-b`)),
+    ).toBeUndefined();
+  });
+
+  it('shoud infer vpc identifiers for subnets when vpc_id becomes available after initial lookup', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    let readCount = 0;
+    const values = {
+      id: 'subnet-dynamic',
+      get vpc_id() {
+        readCount += 1;
+        return readCount === 1 ? undefined : 'vpc-dynamic';
+      },
+    } as Record<string, unknown>;
+
+    const subnetId = asNodeId('resource.aws_subnet.dynamic');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.dynamic',
+            resource: 'aws_subnet',
+            name: 'dynamic',
+            state: buildTerraformState('aws_subnet.dynamic', values),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(subnetId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-dynamic:az:unknown:subnet:subnet-dynamic',
+    );
+  });
+
+  it('shoud tolerate disappearing subnet nodes during topology fallback resolution', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const subnetId = asNodeId('resource.aws_subnet.ephemeral');
+    const subnetNode: TgNodeAttributes = {
+      terraform: {
+        kind: 'resource',
+        address: 'aws_subnet.ephemeral',
+        resource: 'aws_subnet',
+        name: 'ephemeral',
+        state: buildTerraformState('aws_subnet.ephemeral', {
+          id: 'subnet-ephemeral',
+        }),
+      },
+    };
+
+    let subnetLookups = 0;
+    const adapter = {
+      nodeIds: () => [subnetId],
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId !== subnetId) {
+          return undefined;
+        }
+
+        subnetLookups += 1;
+        return subnetLookups <= 2 ? subnetNode : undefined;
+      },
+      predecessors: () => [],
+      successors: () => [],
+      setNodeAttributes: () => adapter,
+      inEdges: () => [],
+      outEdges: () => [],
+      edgeSource: () => asNodeId(''),
+      edgeTarget: () => asNodeId(''),
+      getEdgeAttributes: () => ({}),
+    } as unknown as AdapterOperations;
+
+    const startNode = adapter.getNodeAttributes(subnetId);
+    if (!startNode) {
+      throw new Error('Expected start node');
+    }
+
+    rule.match(subnetId, startNode, adapter);
+    const updated = rule.apply(subnetId, startNode, adapter);
+    expect(updated).toBe(adapter);
+  });
+
+  it('shoud fallback subnet scopes to the single known vpc when module and edge inference is unavailable', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.singleton');
+    const subnetId = asNodeId('resource.aws_subnet.singleton');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.singleton',
+            resource: 'aws_vpc',
+            name: 'singleton',
+            state: buildTerraformState('aws_vpc.singleton', {
+              id: 'vpc-singleton',
+            }),
+          },
+        },
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.singleton',
+            resource: 'aws_subnet',
+            name: 'singleton',
+            state: buildTerraformState('aws_subnet.singleton', {
+              id: 'subnet-singleton',
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(subnetId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-singleton:az:unknown:subnet:subnet-singleton',
+    );
   });
 });
