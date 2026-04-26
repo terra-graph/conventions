@@ -83,7 +83,7 @@ export default new Profile(conventionDataFlowBaseProfileName, {
     {
       plugin: AwsNetworkPlacementPlugin.id,
       slot: 'topology-placement',
-      options: { enrichers: ['rds', 'elasticache', 'ecs', 'network'] },
+      options: { enrichers: ['rds', 'elasticache', 'ecs', 'ec2', 'network'] },
     },
     {
       plugin: ApiGatewayPlugin.id,

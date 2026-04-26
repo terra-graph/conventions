@@ -122,7 +122,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
 
   it('shoud normalize supported enricher ids deterministically', () => {
     const [rule] = buildRules({
-      enrichers: ['elasticache', 'rds', 'ecs', 'network', 'rds', 'unknown'],
+      enrichers: ['elasticache', 'rds', 'ecs', 'ec2', 'network', 'rds', 'unknown'],
     });
 
     expect(rule?.serialize()).toStrictEqual({
@@ -132,7 +132,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['ecs', 'elasticache', 'network', 'rds'],
+          enrichers: ['ec2', 'ecs', 'elasticache', 'network', 'rds'],
           mode: 'full',
         },
       },
@@ -2057,6 +2057,148 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     expect(updated.getNodeAttributes(clusterId)?.hints?.topology).toBeUndefined();
     expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology).toBeUndefined();
+  });
+
+  it('shoud place ec2 launch templates and autoscaling resources when the ec2 enricher is enabled', () => {
+    const [ruleWithoutEnricher] = buildRules();
+    const [ruleWithEnricher] = buildRules({ enrichers: ['ec2'] });
+    if (!ruleWithoutEnricher || !ruleWithEnricher) {
+      throw new Error('Expected placement rules');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const securityGroupId = asNodeId('resource.aws_security_group.app');
+    const launchTemplateId = asNodeId('resource.aws_launch_template.app');
+    const launchConfigurationId = asNodeId('resource.aws_launch_configuration.legacy');
+    const asgFromTemplateId = asNodeId('resource.aws_autoscaling_group.from_template');
+    const asgFromConfigurationId = asNodeId('resource.aws_autoscaling_group.from_configuration');
+    const instanceId = asNodeId('resource.aws_instance.web');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [securityGroupId]: {
+          id: securityGroupId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.app',
+            resource: 'aws_security_group',
+            name: 'app',
+            state: buildTerraformState('aws_security_group.app', {
+              id: 'sg-app',
+              vpc_id: 'vpc-1',
+            }),
+          },
+        },
+        [launchTemplateId]: {
+          id: launchTemplateId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_launch_template.app',
+            resource: 'aws_launch_template',
+            name: 'app',
+            state: buildTerraformState('aws_launch_template.app', {
+              id: 'lt-123',
+              vpc_security_group_ids: ['sg-app'],
+            }),
+          },
+        },
+        [launchConfigurationId]: {
+          id: launchConfigurationId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_launch_configuration.legacy',
+            resource: 'aws_launch_configuration',
+            name: 'legacy',
+            state: buildTerraformState('aws_launch_configuration.legacy', {
+              id: 'lc-legacy',
+              security_groups: ['sg-app'],
+            }),
+          },
+        },
+        [asgFromTemplateId]: {
+          id: asgFromTemplateId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_autoscaling_group.from_template',
+            resource: 'aws_autoscaling_group',
+            name: 'from_template',
+            state: buildTerraformState('aws_autoscaling_group.from_template', {
+              availability_zones: ['eu-west-2a', 'eu-west-2b'],
+              launch_template: [
+                {
+                  id: 'lt-123',
+                },
+              ],
+            }),
+          },
+        },
+        [asgFromConfigurationId]: {
+          id: asgFromConfigurationId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_autoscaling_group.from_configuration',
+            resource: 'aws_autoscaling_group',
+            name: 'from_configuration',
+            state: buildTerraformState('aws_autoscaling_group.from_configuration', {
+              availability_zones: ['eu-west-2a'],
+              launch_configuration: 'lc-legacy',
+            }),
+          },
+        },
+        [instanceId]: {
+          id: instanceId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_instance.web',
+            resource: 'aws_instance',
+            name: 'web',
+            state: buildTerraformState('aws_instance.web', {
+              vpc_security_group_ids: ['sg-app'],
+            }),
+          },
+        },
+      },
+      edges: [],
+    };
+
+    const withoutEnricher = applyRuleAcrossNodes(ruleWithoutEnricher, buildAdapter(graph));
+    const withEnricher = applyRuleAcrossNodes(ruleWithEnricher, buildAdapter(graph));
+
+    expect(withoutEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(asgFromTemplateId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(instanceId)?.hints?.topology).toBeUndefined();
+
+    expect(withEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+    expect(withEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+    expect(withEnricher.getNodeAttributes(asgFromTemplateId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+    expect(withEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+    expect(withEnricher.getNodeAttributes(instanceId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
   });
 
   it('shoud keep clone creation idempotent for enricher-managed resources', () => {

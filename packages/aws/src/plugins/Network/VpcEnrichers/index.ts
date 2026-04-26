@@ -1,3 +1,4 @@
+import { Ec2PlacementEnricher } from './Placements/ec2.js';
 import { EcsPlacementEnricher } from './Placements/ecs.js';
 import { ElasticachePlacementEnricher } from './Placements/elasticache.js';
 import { NetworkPlacementEnricher } from './Placements/network.js';
@@ -26,6 +27,7 @@ const ENRICHER_REGISTRY: Record<AwsNetworkPlacementEnricherId, PlacementEnricher
   rds: RdsPlacementEnricher,
   elasticache: ElasticachePlacementEnricher,
   ecs: EcsPlacementEnricher,
+  ec2: Ec2PlacementEnricher,
   network: NetworkPlacementEnricher,
 };
 
@@ -33,6 +35,7 @@ const SUPPORTED_ENRICHERS: AwsNetworkPlacementEnricherId[] = [
   'rds',
   'elasticache',
   'ecs',
+  'ec2',
   'network',
 ];
 const SUPPORTED_ENRICHER_SET = new Set<AwsNetworkPlacementEnricherId>(SUPPORTED_ENRICHERS);
