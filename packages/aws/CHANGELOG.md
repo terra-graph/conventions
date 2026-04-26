@@ -1,3 +1,9 @@
+## [1.0.0-rc.7](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.6...@terra-graph/conventions-aws@1.0.0-rc.7) (2026-04-26)
+
+### Features
+
+* ec2 vpc ([3f437d3](https://github.com/terra-graph/conventions/commit/3f437d3c0010dfc736a79812cf3f447db859aabd))
+
 ## [1.0.0-rc.6](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.5...@terra-graph/conventions-aws@1.0.0-rc.6) (2026-04-25)
 
 ### Features
