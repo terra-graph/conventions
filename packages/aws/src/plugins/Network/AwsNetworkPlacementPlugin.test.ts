@@ -2179,9 +2179,13 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const withEnricher = applyRuleAcrossNodes(ruleWithEnricher, buildAdapter(graph));
 
     expect(withoutEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology).toBeUndefined();
-    expect(withoutEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(
+      withoutEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology,
+    ).toBeUndefined();
     expect(withoutEnricher.getNodeAttributes(asgFromTemplateId)?.hints?.topology).toBeUndefined();
-    expect(withoutEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(
+      withoutEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology,
+    ).toBeUndefined();
     expect(withoutEnricher.getNodeAttributes(instanceId)?.hints?.topology).toBeUndefined();
 
     expect(withEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology?.scopeId).toBe(
@@ -2196,9 +2200,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(withEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1',
     );
-    expect(withEnricher.getNodeAttributes(instanceId)?.hints?.topology?.scopeId).toBe(
-      'vpc:vpc-1',
-    );
+    expect(withEnricher.getNodeAttributes(instanceId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
   });
 
   it('shoud keep clone creation idempotent for enricher-managed resources', () => {

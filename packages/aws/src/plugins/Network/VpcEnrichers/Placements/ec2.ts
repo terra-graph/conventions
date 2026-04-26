@@ -196,28 +196,12 @@ export const Ec2PlacementEnricher: PlacementEnricher = {
   ]),
   indexNode: ({ nodeId, node, values, context, resource, address, name }) => {
     if (resource === SECURITY_GROUP_RESOURCE) {
-      linkNodeIdentifiers(
-        GROUP_KIND_SECURITY_GROUP,
-        nodeId,
-        node,
-        values,
-        context,
-        address,
-        name,
-      );
+      linkNodeIdentifiers(GROUP_KIND_SECURITY_GROUP, nodeId, node, values, context, address, name);
       return;
     }
 
     if (resource === LAUNCH_TEMPLATE_RESOURCE) {
-      linkNodeIdentifiers(
-        GROUP_KIND_LAUNCH_TEMPLATE,
-        nodeId,
-        node,
-        values,
-        context,
-        address,
-        name,
-      );
+      linkNodeIdentifiers(GROUP_KIND_LAUNCH_TEMPLATE, nodeId, node, values, context, address, name);
       return;
     }
 

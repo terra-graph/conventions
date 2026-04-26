@@ -1,6 +1,6 @@
-import { asNodeId, type AdapterOperations, type TgNodeAttributes } from '@terra-graph/core';
-import { Ec2PlacementEnricher } from './ec2.js';
+import { type AdapterOperations, type TgNodeAttributes, asNodeId } from '@terra-graph/core';
 import type { PlacementContext } from '../types.js';
+import { Ec2PlacementEnricher } from './ec2.js';
 
 const buildContext = (graph: AdapterOperations): PlacementContext => ({
   graph,
