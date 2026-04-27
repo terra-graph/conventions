@@ -1,8 +1,5 @@
-import { Ec2PlacementEnricher } from './Placements/ec2.js';
-import { EcsPlacementEnricher } from './Placements/ecs.js';
-import { ElasticachePlacementEnricher } from './Placements/elasticache.js';
+import { EfsPlacementEnricher } from './Placements/efs.js';
 import { NetworkPlacementEnricher } from './Placements/network.js';
-import { RdsPlacementEnricher } from './Placements/rds.js';
 import { isObjectRecord } from './shared.js';
 import type {
   AwsNetworkPlacementEnricherId,
@@ -24,20 +21,11 @@ export type {
 } from './types.js';
 
 const ENRICHER_REGISTRY: Record<AwsNetworkPlacementEnricherId, PlacementEnricher> = {
-  rds: RdsPlacementEnricher,
-  elasticache: ElasticachePlacementEnricher,
-  ecs: EcsPlacementEnricher,
-  ec2: Ec2PlacementEnricher,
+  efs: EfsPlacementEnricher,
   network: NetworkPlacementEnricher,
 };
 
-const SUPPORTED_ENRICHERS: AwsNetworkPlacementEnricherId[] = [
-  'rds',
-  'elasticache',
-  'ecs',
-  'ec2',
-  'network',
-];
+const SUPPORTED_ENRICHERS: AwsNetworkPlacementEnricherId[] = ['efs', 'network'];
 const SUPPORTED_ENRICHER_SET = new Set<AwsNetworkPlacementEnricherId>(SUPPORTED_ENRICHERS);
 const SUPPORTED_VISIBILITY_MODES: AwsNetworkVisibilityMode[] = ['full', 'architecture', 'minimal'];
 const SUPPORTED_VISIBILITY_MODE_SET = new Set<AwsNetworkVisibilityMode>(SUPPORTED_VISIBILITY_MODES);

@@ -74,7 +74,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
 
   it('shoud keep only supported enrichers and ignore invalid shapes', () => {
     const [rule] = buildRules({
-      enrichers: ['rds', 'unknown', 1],
+      enrichers: ['network', 'unknown', 1],
       ignored: true,
     });
 
@@ -85,13 +85,13 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['rds'],
+          enrichers: ['network'],
           mode: 'full',
         },
       },
     });
 
-    const [ruleWithInvalidShape] = buildRules({ enrichers: 'rds' });
+    const [ruleWithInvalidShape] = buildRules({ enrichers: 'network' });
     expect(ruleWithInvalidShape?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
       config: {
@@ -122,7 +122,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
 
   it('shoud normalize supported enricher ids deterministically', () => {
     const [rule] = buildRules({
-      enrichers: ['elasticache', 'rds', 'ecs', 'ec2', 'network', 'rds', 'unknown'],
+      enrichers: ['efs', 'network', 'efs', 'network', 'unknown'],
     });
 
     expect(rule?.serialize()).toStrictEqual({
@@ -132,16 +132,47 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['ec2', 'ecs', 'elasticache', 'network', 'rds'],
+          enrichers: ['efs', 'network'],
           mode: 'full',
         },
       },
     });
   });
 
+  it('shoud apply with multiple enabled enrichers without relying on registration order', () => {
+    const [rule] = buildRules({
+      enrichers: ['network', 'efs'],
+    });
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const nodeId = asNodeId('resource.aws_lambda_function.simple');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [nodeId]: {
+          id: nodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.simple',
+            resource: 'aws_lambda_function',
+            name: 'simple',
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+
+    expect(updated.getNodeAttributes(nodeId)).toBeDefined();
+  });
+
   it('shoud normalize supported visibility modes and fallback to full for invalid values', () => {
     const [rule] = buildRules({
-      enrichers: ['rds'],
+      enrichers: ['network'],
       mode: 'minimal',
     });
 
@@ -152,14 +183,14 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['rds'],
+          enrichers: ['network'],
           mode: 'minimal',
         },
       },
     });
 
     const [ruleWithInvalidMode] = buildRules({
-      enrichers: ['rds'],
+      enrichers: ['network'],
       mode: 'invalid',
     });
 
@@ -170,7 +201,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['rds'],
+          enrichers: ['network'],
           mode: 'full',
         },
       },
@@ -178,7 +209,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud no-op when apply is invoked before matching', () => {
-    const [rule] = buildRules();
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -320,7 +351,15 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(loadBalancerId)?.hints).toEqual(
       expect.objectContaining({
         topology: expect.objectContaining({
-          scopeId: 'vpc:vpc-1',
+          scopeId: 'vpc:vpc-1:az:eu-west-2a:subnet:subnet-1',
+        }),
+      }),
+    );
+    const loadBalancerReplicaId = asNodeId(`${String(loadBalancerId)}:replica:subnet:subnet-2`);
+    expect(updated.getNodeAttributes(loadBalancerReplicaId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          scopeId: 'vpc:vpc-1:az:eu-west-2b:subnet:subnet-2',
         }),
       }),
     );
@@ -440,10 +479,110 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(asgSingleId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
     );
-    expect(updated.getNodeAttributes(asgMultiId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
+    expect(updated.getNodeAttributes(asgMultiId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+    const asgMultiReplicaId = asNodeId(`${String(asgMultiId)}:replica:subnet:subnet-b`);
+    expect(updated.getNodeAttributes(asgMultiReplicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
     expect(updated.getNodeAttributes(asgFallbackId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
     );
+  });
+
+  it('shoud place blacklisted single-subnet relationship resources at vpc scope', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetId = asNodeId('resource.aws_subnet.a');
+    const routeAssociationId = asNodeId('resource.aws_route_table_association.private_a');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.a',
+            resource: 'aws_subnet',
+            name: 'a',
+            state: buildTerraformState('aws_subnet.a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [routeAssociationId]: {
+          id: routeAssociationId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_route_table_association.private_a',
+            resource: 'aws_route_table_association',
+            name: 'private_a',
+            state: buildTerraformState('aws_route_table_association.private_a', {
+              subnet_id: 'subnet-a',
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(routeAssociationId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1',
+    );
+  });
+
+  it('shoud keep blacklisted single-subnet relationship resources unscoped when subnet vpc is unknown', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const routeAssociationId = asNodeId('resource.aws_route_table_association.unknown');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [routeAssociationId]: {
+          id: routeAssociationId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_route_table_association.unknown',
+            resource: 'aws_route_table_association',
+            name: 'unknown',
+            state: buildTerraformState('aws_route_table_association.unknown', {
+              subnet_id: 'subnet-unknown',
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(routeAssociationId)?.hints?.topology).toBeUndefined();
   });
 
   it('shoud use edge fallback and inferred references when state fields are missing', () => {
@@ -630,8 +769,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(crossVpcNodeId)?.hints?.topology).toBeUndefined();
   });
 
-  it('shoud infer module-local subnet topology and fallback enricher-managed resources to a single vpc scope', () => {
-    const [rule] = buildRules({ enrichers: ['rds', 'network'] });
+  it('shoud infer module-local subnet topology without forcing unreferenced resources into vpc scope', () => {
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -744,15 +883,13 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(subnetBId)?.hints?.topology?.scopeId).toBe(
       'vpc:this[0]:az:eu-west-2b:subnet:private[1]',
     );
-    expect(updated.getNodeAttributes(dbSubnetGroupId)?.hints?.topology?.scopeId).toBe(
-      'vpc:this[0]',
-    );
-    expect(updated.getNodeAttributes(dbId)?.hints?.topology?.scopeId).toBe('vpc:this[0]');
+    expect(updated.getNodeAttributes(dbSubnetGroupId)?.hints?.topology).toBeUndefined();
+    expect(updated.getNodeAttributes(dbId)?.hints?.topology).toBeUndefined();
     expect(updated.getNodeAttributes(sgId)?.hints?.topology?.scopeId).toBe('vpc:this[0]');
   });
 
   it('shoud place lambda and rds from inferred external vpc references when vpc and subnet resources are absent', () => {
-    const [rule] = buildRules({ enrichers: ['rds', 'network'] });
+    const [rule] = buildRules();
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -839,7 +976,13 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(securityGroupId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-external',
     );
-    expect(updated.getNodeAttributes(lambdaId)?.hints?.topology?.scopeId).toBe('vpc:vpc-external');
+    expect(updated.getNodeAttributes(lambdaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-external:az:unknown:subnet:subnet-ext-a',
+    );
+    const lambdaReplicaId = asNodeId(`${String(lambdaId)}:replica:subnet:subnet-ext-b`);
+    expect(updated.getNodeAttributes(lambdaReplicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-external:az:unknown:subnet:subnet-ext-b',
+    );
     expect(updated.getNodeAttributes(dbInstanceId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-external:az:unknown:subnet:subnet-ext-a',
     );
@@ -1075,9 +1218,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
   });
 
-  it('shoud place rds by subnet-group relationships only when the rds enricher is enabled', () => {
+  it('shoud place rds by subnet-group relationships without requiring the rds enricher', () => {
     const [ruleWithoutEnricher] = buildRules();
-    const [ruleWithEnricher] = buildRules({ enrichers: ['rds'] });
+    const [ruleWithEnricher] = buildRules({ enrichers: ['network'] });
     if (!ruleWithoutEnricher || !ruleWithEnricher) {
       throw new Error('Expected placement rules');
     }
@@ -1199,7 +1342,13 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const withoutEnricher = applyRuleAcrossNodes(ruleWithoutEnricher, buildAdapter(graph));
     const withEnricher = applyRuleAcrossNodes(ruleWithEnricher, buildAdapter(graph));
 
-    expect(withoutEnricher.getNodeAttributes(dbId)?.hints?.topology).toBeUndefined();
+    expect(withoutEnricher.getNodeAttributes(dbId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          scopeId: 'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+        }),
+      }),
+    );
     expect(withEnricher.getNodeAttributes(dbId)?.hints).toEqual(
       expect.objectContaining({
         topology: expect.objectContaining({
@@ -1209,6 +1358,14 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
 
     const replicaId = asNodeId(`${String(dbId)}:replica:subnet:subnet-b`);
+    expect(withoutEnricher.getNodeAttributes(replicaId)?.id).toBe(replicaId);
+    expect(withoutEnricher.getNodeAttributes(replicaId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          scopeId: 'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+        }),
+      }),
+    );
     expect(withEnricher.getNodeAttributes(replicaId)?.id).toBe(replicaId);
     expect(withEnricher.getNodeAttributes(replicaId)?.hints).toEqual(
       expect.objectContaining({
@@ -1227,8 +1384,130 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     ).toBe(true);
   });
 
+  it('shoud clone generic aws_*_subnet_group resources across subnets without service-specific clone wiring', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.a');
+    const subnetBId = asNodeId('resource.aws_subnet.b');
+    const subnetGroupId = asNodeId('resource.aws_redshift_subnet_group.this');
+    const appId = asNodeId('resource.aws_lambda_function.app');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', { id: 'vpc-1' }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.a',
+            resource: 'aws_subnet',
+            name: 'a',
+            state: buildTerraformState('aws_subnet.a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.b',
+            resource: 'aws_subnet',
+            name: 'b',
+            state: buildTerraformState('aws_subnet.b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [subnetGroupId]: {
+          id: subnetGroupId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_redshift_subnet_group.this',
+            resource: 'aws_redshift_subnet_group',
+            name: 'this',
+            state: buildTerraformState('aws_redshift_subnet_group.this', {
+              name: 'warehouse-subnets',
+              subnet_ids: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+        [appId]: {
+          id: appId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.app',
+            resource: 'aws_lambda_function',
+            name: 'app',
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-app-subnet-group'),
+          from: appId,
+          to: subnetGroupId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-subnet-group-a'),
+          from: subnetGroupId,
+          to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-subnet-group-b'),
+          from: subnetGroupId,
+          to: subnetBId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(subnetGroupId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+
+    const replicaId = asNodeId(`${String(subnetGroupId)}:replica:subnet:subnet-b`);
+    expect(updated.getNodeAttributes(replicaId)?.id).toBe(replicaId);
+    expect(updated.getNodeAttributes(replicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+    expect(updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === appId)).toBe(
+      true,
+    );
+    expect(
+      updated
+        .outEdges(replicaId)
+        .some(
+          (edgeId) =>
+            updated.edgeTarget(edgeId) === subnetAId || updated.edgeTarget(edgeId) === subnetBId,
+        ),
+    ).toBe(true);
+  });
+
   it('shoud tolerate missing node lookups and preserve idempotence on reruns', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1275,7 +1554,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     expect(updated).toBe(adapter);
 
-    const idempotentRule = buildRules({ enrichers: ['rds'] })[0];
+    const idempotentRule = buildRules({ enrichers: ['network'] })[0];
     if (!idempotentRule) {
       throw new Error('Expected idempotent rule');
     }
@@ -1311,7 +1590,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud tolerate missing neighbor node lookups while applying rds enrichment', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1355,7 +1634,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud infer subnet keys from rds subnet-group state even when subnet nodes are absent', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1409,7 +1688,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud handle sparse and duplicate resources while keeping unresolved placements unscoped', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules();
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1624,7 +1903,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud enrich and clone elasticache replication-group and cluster across subnets', () => {
-    const [rule] = buildRules({ enrichers: ['elasticache'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1762,7 +2041,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud enrich and clone ecs services from network configuration with edge fallback', () => {
-    const [rule] = buildRules({ enrichers: ['ecs'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1903,7 +2182,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud scope ecs services/task sets but keep ecs cluster and task definition unscoped', () => {
-    const [rule] = buildRules({ enrichers: ['ecs'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2059,9 +2338,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology).toBeUndefined();
   });
 
-  it('shoud place ec2 launch templates and autoscaling resources when the ec2 enricher is enabled', () => {
+  it('shoud keep ec2 control-plane resources unscoped when subnet context is absent', () => {
     const [ruleWithoutEnricher] = buildRules();
-    const [ruleWithEnricher] = buildRules({ enrichers: ['ec2'] });
+    const [ruleWithEnricher] = buildRules({ enrichers: ['network'] });
     if (!ruleWithoutEnricher || !ruleWithEnricher) {
       throw new Error('Expected placement rules');
     }
@@ -2188,23 +2467,15 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     ).toBeUndefined();
     expect(withoutEnricher.getNodeAttributes(instanceId)?.hints?.topology).toBeUndefined();
 
-    expect(withEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology?.scopeId).toBe(
-      'vpc:vpc-1',
-    );
-    expect(withEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology?.scopeId).toBe(
-      'vpc:vpc-1',
-    );
-    expect(withEnricher.getNodeAttributes(asgFromTemplateId)?.hints?.topology?.scopeId).toBe(
-      'vpc:vpc-1',
-    );
-    expect(withEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology?.scopeId).toBe(
-      'vpc:vpc-1',
-    );
-    expect(withEnricher.getNodeAttributes(instanceId)?.hints?.topology?.scopeId).toBe('vpc:vpc-1');
+    expect(withEnricher.getNodeAttributes(launchTemplateId)?.hints?.topology).toBeUndefined();
+    expect(withEnricher.getNodeAttributes(launchConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(withEnricher.getNodeAttributes(asgFromTemplateId)?.hints?.topology).toBeUndefined();
+    expect(withEnricher.getNodeAttributes(asgFromConfigurationId)?.hints?.topology).toBeUndefined();
+    expect(withEnricher.getNodeAttributes(instanceId)?.hints?.topology).toBeUndefined();
   });
 
   it('shoud keep clone creation idempotent for enricher-managed resources', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2319,7 +2590,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud tolerate subnet-group resources with sparse identifiers', () => {
-    const [rule] = buildRules({ enrichers: ['rds', 'elasticache'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2620,7 +2891,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud fallback multi-subnet enricher-managed resources to a single placeable vpc', () => {
-    const [rule] = buildRules({ enrichers: ['rds'] });
+    const [rule] = buildRules({ enrichers: ['network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }

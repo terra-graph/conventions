@@ -108,7 +108,9 @@ describe('dataflow dot profile', () => {
       {
         plugin: AwsNetworkPlacementPlugin.id,
         slot: 'topology-placement',
-        options: { enrichers: ['rds', 'elasticache', 'ecs', 'ec2', 'network'] },
+        options: {
+          enrichers: ['efs', 'network'],
+        },
       },
       {
         plugin: ApiGatewayPlugin.id,

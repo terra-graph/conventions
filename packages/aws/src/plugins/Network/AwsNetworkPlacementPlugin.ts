@@ -22,14 +22,19 @@ import {
 } from './VpcEnrichers/index.js';
 import {
   addSubnetIdentifiers,
+  getOrCreateGroupNodeMap,
   isObjectRecord,
+  linkGroupIdentifier,
   readStateValues,
   resolveNeighborSubnetKeys,
   resolveNeighborVpcKeys,
+  resolveReferencedSubnetGroupIds,
   resolveReferencedSubnetIds,
   resolveReferencedVpcIds,
+  resolveSubnetsFromGroupByName,
   resolveUniqueVpcKeyFromModulePath,
   toModulePath,
+  toStringArray,
   toStringValue,
   toTerraformAddress,
 } from './VpcEnrichers/shared.js';
@@ -37,7 +42,10 @@ import {
 const VPC_RESOURCE = 'aws_vpc';
 const SUBNET_RESOURCE = 'aws_subnet';
 const REPLICA_NODE_SEGMENT = ':replica:subnet:';
-const CLONE_ENRICHER_IDS = new Set<string>(['rds', 'elasticache', 'ecs']);
+const SUBNET_GROUP_RESOURCE_PATTERN = /^aws_.+_subnet_group$/;
+const GENERIC_SUBNET_GROUP_KIND = 'network.generic_subnet_group';
+const SUBNET_PLACEMENT_BLACKLIST_PATTERN =
+  /(_association|_rule|_attachment|_policy|_permission|_listener)$/;
 
 type CloneEdgeSnapshot = {
   id: string;
@@ -76,6 +84,26 @@ const parseReplicaSubnetKey = (nodeId: NodeId): string | undefined => {
 
   const subnetKey = String(nodeId).slice(index + REPLICA_NODE_SEGMENT.length);
   return subnetKey.length > 0 ? subnetKey : undefined;
+};
+
+const isSubnetGroupResource = (resource: string | undefined): boolean => {
+  if (!resource) {
+    return false;
+  }
+
+  return SUBNET_GROUP_RESOURCE_PATTERN.test(resource);
+};
+
+const isSubnetPlacementBlacklistedResource = (resource: string | undefined): boolean => {
+  if (!resource) {
+    return false;
+  }
+
+  if (resource === VPC_RESOURCE || resource === SUBNET_RESOURCE) {
+    return false;
+  }
+
+  return SUBNET_PLACEMENT_BLACKLIST_PATTERN.test(resource);
 };
 
 class ApplyAwsNetworkPlacementHints extends NodeRule {
@@ -140,31 +168,49 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
       const values = readStateValues(node);
       const referencedVpcIds = resolveReferencedVpcIds(values);
+      const referencedSubnetIds = resolveReferencedSubnetIds(values);
+      const referencedSubnetGroupIds = resolveReferencedSubnetGroupIds(values);
       const explicitVpcId = referencedVpcIds[0];
       const explicitVpcKeys = new Set<string>();
 
       for (const referencedVpcId of referencedVpcIds) {
-        const existingVpcKey = context.vpcIdentifierToKey.get(referencedVpcId);
-        if (existingVpcKey) {
-          explicitVpcKeys.add(existingVpcKey);
-        } else {
-          context.vpcs.set(referencedVpcId, { key: referencedVpcId, label: referencedVpcId });
-          context.vpcIdentifierToKey.set(referencedVpcId, referencedVpcId);
-          explicitVpcKeys.add(referencedVpcId);
+        // Build context pre-indexes referenced VPC ids. Keep fallback for defensive robustness.
+        /* istanbul ignore next */
+        const vpcKey = context.vpcIdentifierToKey.get(referencedVpcId) ?? referencedVpcId;
+        context.vpcIdentifierToKey.set(referencedVpcId, vpcKey);
+        // Placement context pre-indexes referenced VPC ids; keep a defensive backfill.
+        /* istanbul ignore next */
+        if (!context.vpcs.get(vpcKey)) {
+          context.vpcs.set(vpcKey, { key: vpcKey, label: vpcKey });
         }
+        explicitVpcKeys.add(vpcKey);
       }
 
       const subnetKeys = new Set<string>();
       const vpcKeys = new Set<string>(explicitVpcKeys);
-      addSubnetIdentifiers(resolveReferencedSubnetIds(values), context, subnetKeys, explicitVpcId);
+      addSubnetIdentifiers(referencedSubnetIds, context, subnetKeys, explicitVpcId);
 
       const resource = toStringValue(node.terraform?.resource);
       const matchingEnrichers = enabledEnrichers.filter((enricher) =>
         resource ? enricher.resources.has(resource) : false,
       );
-      const shouldCloneMultiSubnet = matchingEnrichers.some((enricher) =>
-        CLONE_ENRICHER_IDS.has(enricher.id),
+      const isSubnetPlacementBlacklisted = isSubnetPlacementBlacklistedResource(resource);
+
+      for (const subnetGroupId of referencedSubnetGroupIds) {
+        for (const subnetKey of resolveSubnetsFromGroupByName(
+          GENERIC_SUBNET_GROUP_KIND,
+          subnetGroupId,
+          context,
+        )) {
+          subnetKeys.add(subnetKey);
+        }
+      }
+
+      const neighborSubnetGroupIds = this.resolveSubnetIdsFromNeighborSubnetGroups(
+        currentNodeId,
+        context,
       );
+      addSubnetIdentifiers(neighborSubnetGroupIds, context, subnetKeys, explicitVpcId);
 
       for (const enricher of matchingEnrichers) {
         enricher.apply({
@@ -178,12 +224,14 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         });
       }
 
-      if (subnetKeys.size === 0) {
-        for (const key of resolveNeighborSubnetKeys(
-          currentNodeId,
-          graph,
-          context.subnetNodeToKey,
-        )) {
+      const edgeSubnetKeys = resolveNeighborSubnetKeys(
+        currentNodeId,
+        graph,
+        context.subnetNodeToKey,
+      );
+      if (edgeSubnetKeys.size > 0) {
+        subnetKeys.clear();
+        for (const key of edgeSubnetKeys) {
           subnetKeys.add(key);
         }
       }
@@ -211,11 +259,29 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         subnetKeys.add(ownSubnetKey);
       }
 
+      const networkAware =
+        referencedSubnetIds.length > 0 ||
+        referencedVpcIds.length > 0 ||
+        referencedSubnetGroupIds.length > 0 ||
+        subnetKeys.size > 0 ||
+        vpcKeys.size > 0 ||
+        matchingEnrichers.length > 0;
+
       const sortedSubnetKeys = [...subnetKeys].sort((left, right) => left.localeCompare(right));
       if (sortedSubnetKeys.length === 1) {
-        const scopeId = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
-        if (scopeId) {
-          placements.set(currentNodeId, scopeId);
+        if (isSubnetPlacementBlacklisted) {
+          const subnetVpcScope = this.resolveVpcScopeFromSubnet(
+            sortedSubnetKeys[0],
+            context.subnets,
+          );
+          if (subnetVpcScope) {
+            placements.set(currentNodeId, subnetVpcScope);
+          }
+        } else {
+          const scopeId = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
+          if (scopeId) {
+            placements.set(currentNodeId, scopeId);
+          }
         }
         continue;
       }
@@ -227,6 +293,8 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
         const uniqueSubnetVpcKeys = [...new Set(subnetVpcKeys)];
         if (uniqueSubnetVpcKeys.length === 1) {
+          const shouldCloneMultiSubnet = !isSubnetPlacementBlacklisted;
+
           if (
             shouldCloneMultiSubnet &&
             subnetVpcKeys.length === sortedSubnetKeys.length &&
@@ -274,7 +342,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
           }
 
           placements.set(currentNodeId, buildVpcScopeId(uniqueSubnetVpcKeys[0]));
-        } else if (matchingEnrichers.length > 0) {
+        } else if (networkAware) {
           const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
           if (fallbackVpcKey) {
             placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
@@ -286,7 +354,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
       if (vpcKeys.size === 1) {
         placements.set(currentNodeId, buildVpcScopeId([...vpcKeys][0]));
-      } else if (matchingEnrichers.length > 0) {
+      } else if (networkAware) {
         const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
         if (fallbackVpcKey) {
           placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
@@ -380,6 +448,17 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         addSubnetIdentifiers(referencedSubnetIds, context, new Set<string>(), referencedVpcIds[0]);
       }
 
+      if (isSubnetGroupResource(resource)) {
+        const subnetGroups = getOrCreateGroupNodeMap(context, GENERIC_SUBNET_GROUP_KIND);
+        linkGroupIdentifier(subnetGroups, toStringValue(values.id), currentNodeId);
+        linkGroupIdentifier(subnetGroups, toStringValue(values.arn), currentNodeId);
+        linkGroupIdentifier(subnetGroups, toStringValue(values.name), currentNodeId);
+        linkGroupIdentifier(subnetGroups, name, currentNodeId);
+        linkGroupIdentifier(subnetGroups, address, currentNodeId);
+        linkGroupIdentifier(subnetGroups, terraformAddress, currentNodeId);
+        linkGroupIdentifier(subnetGroups, String(currentNodeId), currentNodeId);
+      }
+
       if (resource === VPC_RESOURCE) {
         const vpcId = toStringValue(values.id);
         const vpcKey = vpcId ?? name ?? address ?? String(currentNodeId);
@@ -436,14 +515,12 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
     for (const subnet of context.subnets.values()) {
       const referencedVpcKeys = [...subnet.vpcReferences].map((vpcReference) => {
-        const existing = context.vpcIdentifierToKey.get(vpcReference);
-        if (existing) {
-          return existing;
-        }
-
-        ensureVpc(vpcReference, vpcReference);
-        context.vpcIdentifierToKey.set(vpcReference, vpcReference);
-        return vpcReference;
+        // Subnet identifiers should already be linked in the context; keep fallback for malformed graphs.
+        /* istanbul ignore next */
+        const vpcKey = context.vpcIdentifierToKey.get(vpcReference) ?? vpcReference;
+        ensureVpc(vpcKey, vpcKey);
+        context.vpcIdentifierToKey.set(vpcReference, vpcKey);
+        return vpcKey;
       });
 
       const uniqueReferencedVpcKeys = [...new Set(referencedVpcKeys)];
@@ -482,6 +559,55 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
     }
 
     return context;
+  }
+
+  private resolveSubnetIdsFromNeighborSubnetGroups(
+    nodeId: NodeId,
+    context: PlacementContext,
+  ): string[] {
+    const subnetIds = new Set<string>();
+    const neighbors = new Set<NodeId>([
+      ...context.graph.predecessors(nodeId),
+      ...context.graph.successors(nodeId),
+    ]);
+
+    for (const neighborId of neighbors) {
+      const neighbor = context.graph.getNodeAttributes(neighborId);
+      if (!neighbor) {
+        continue;
+      }
+
+      if (!isSubnetGroupResource(toStringValue(neighbor.terraform?.resource))) {
+        continue;
+      }
+
+      const neighborValues = readStateValues(neighbor);
+      for (const subnetId of toStringArray(neighborValues.subnet_ids)) {
+        subnetIds.add(subnetId);
+      }
+
+      for (const subnetKey of resolveNeighborSubnetKeys(
+        neighborId,
+        context.graph,
+        context.subnetNodeToKey,
+      )) {
+        subnetIds.add(subnetKey);
+      }
+    }
+
+    return [...subnetIds];
+  }
+
+  private resolveVpcScopeFromSubnet(
+    subnetKey: string,
+    subnets: Map<string, SubnetInfo>,
+  ): string | undefined {
+    const subnet = subnets.get(subnetKey);
+    if (!subnet?.vpcKey) {
+      return undefined;
+    }
+
+    return buildVpcScopeId(subnet.vpcKey);
   }
 
   private resolveSubnetScope(

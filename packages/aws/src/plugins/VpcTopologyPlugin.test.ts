@@ -796,7 +796,9 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
       id: 'subnet-dynamic',
       get vpc_id() {
         readCount += 1;
-        return readCount === 1 ? undefined : 'vpc-dynamic';
+        // resolveReferencedVpcIds reads vpc_id before subnet-specific parsing.
+        // Return undefined for those reads, then expose the id for subnet.vpcReferences.
+        return readCount <= 2 ? undefined : 'vpc-dynamic';
       },
     } as Record<string, unknown>;
 

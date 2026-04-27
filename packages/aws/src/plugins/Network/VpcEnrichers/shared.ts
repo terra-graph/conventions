@@ -31,6 +31,33 @@ const toRecordArray = (value: unknown): Record<string, unknown>[] => {
   return [];
 };
 
+const walkNestedValues = (
+  value: unknown,
+  onEntry: (key: string, entry: unknown) => void,
+  seen: Set<unknown> = new Set<unknown>(),
+): void => {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  if (seen.has(value)) {
+    return;
+  }
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      walkNestedValues(entry, onEntry, seen);
+    }
+    return;
+  }
+
+  for (const [key, entry] of Object.entries(value)) {
+    onEntry(key, entry);
+    walkNestedValues(entry, onEntry, seen);
+  }
+};
+
 export const readStateValues = (node: TgNodeAttributes): Record<string, unknown> => {
   const state = node.terraform?.state;
   const effective = state?.effective;
@@ -60,6 +87,17 @@ export const resolveReferencedVpcIds = (values: Record<string, unknown>): string
       vpcIds.add(nestedVpcId);
     }
   }
+
+  walkNestedValues(values, (key, entry) => {
+    if (key !== 'vpc_id') {
+      return;
+    }
+
+    const vpcId = toStringValue(entry);
+    if (vpcId) {
+      vpcIds.add(vpcId);
+    }
+  });
 
   return [...vpcIds];
 };
@@ -91,7 +129,54 @@ export const resolveReferencedSubnetIds = (values: Record<string, unknown>): str
     }
   }
 
+  walkNestedValues(values, (key, entry) => {
+    if (key === 'subnet_id') {
+      const subnetId = toStringValue(entry);
+      if (subnetId) {
+        subnetIds.add(subnetId);
+      }
+      return;
+    }
+
+    if (
+      key === 'subnet_ids' ||
+      key === 'subnets' ||
+      key === 'client_subnets' ||
+      key === 'vpc_zone_identifier'
+    ) {
+      for (const subnetId of toStringArray(entry)) {
+        subnetIds.add(subnetId);
+      }
+    }
+  });
+
   return [...subnetIds];
+};
+
+export const resolveReferencedSubnetGroupIds = (values: Record<string, unknown>): string[] => {
+  const subnetGroupIds = new Set<string>();
+
+  walkNestedValues(values, (key, entry) => {
+    if (
+      key === 'subnet_group' ||
+      /^subnet_group_(name|id)$/.test(key) ||
+      /_subnet_group_(name|id)$/.test(key)
+    ) {
+      const subnetGroupId = toStringValue(entry);
+      if (subnetGroupId) {
+        subnetGroupIds.add(subnetGroupId);
+      }
+      return;
+    }
+
+    if (/^subnet_group_(names|ids)$/.test(key) || /_subnet_group_(names|ids)$/.test(key)) {
+      for (const subnetGroupId of toStringArray(entry)) {
+        subnetGroupIds.add(subnetGroupId);
+      }
+    }
+  });
+
+  return [...subnetGroupIds];
 };
 
 export const toTerraformAddress = (node: TgNodeAttributes): string | undefined => {
@@ -290,65 +375,4 @@ export const resolveSubnetsFromGroupByName = (
   }
 
   return resolveNeighborSubnetKeys(groupNodeId, context.graph, context.subnetNodeToKey);
-};
-
-export const resolveSubnetIdsFromGroupNeighbors = (
-  groupResource: string,
-  nodeId: NodeId,
-  context: PlacementContext,
-): string[] => {
-  const subnetIds = new Set<string>();
-  const neighbors = new Set<NodeId>([
-    ...context.graph.predecessors(nodeId),
-    ...context.graph.successors(nodeId),
-  ]);
-
-  for (const neighborId of neighbors) {
-    const neighbor = context.graph.getNodeAttributes(neighborId);
-    if (!neighbor) {
-      continue;
-    }
-
-    if (toStringValue(neighbor.terraform?.resource) !== groupResource) {
-      continue;
-    }
-
-    const neighborValues = readStateValues(neighbor);
-    for (const subnetId of toStringArray(neighborValues.subnet_ids)) {
-      subnetIds.add(subnetId);
-    }
-
-    for (const subnetKey of resolveNeighborSubnetKeys(
-      neighborId,
-      context.graph,
-      context.subnetNodeToKey,
-    )) {
-      subnetIds.add(subnetKey);
-    }
-  }
-
-  return [...subnetIds];
-};
-
-export const resolveEcsSubnetIds = (values: Record<string, unknown>): string[] => {
-  const networkConfiguration = values.network_configuration;
-  const blocks = Array.isArray(networkConfiguration)
-    ? networkConfiguration
-    : networkConfiguration
-      ? [networkConfiguration]
-      : [];
-
-  const subnetIds = new Set<string>();
-
-  for (const block of blocks) {
-    if (!isObjectRecord(block)) {
-      continue;
-    }
-
-    for (const subnetId of [...toStringArray(block.subnets), ...toStringArray(block.subnet_ids)]) {
-      subnetIds.add(subnetId);
-    }
-  }
-
-  return [...subnetIds];
 };

@@ -1,6 +1,6 @@
 import type { AdapterOperations, NodeId, TgNodeAttributes } from '@terra-graph/core';
 
-export type AwsNetworkPlacementEnricherId = 'rds' | 'elasticache' | 'ecs' | 'ec2' | 'network';
+export type AwsNetworkPlacementEnricherId = 'efs' | 'network';
 export type AwsNetworkVisibilityMode = 'full' | 'architecture' | 'minimal';
 
 export type AwsNetworkPlacementPluginOptions = {
