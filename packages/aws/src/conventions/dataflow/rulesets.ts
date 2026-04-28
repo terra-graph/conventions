@@ -14,6 +14,7 @@ import iamSemanticsRuleSet from './rulesets/iam.js';
 import kinesisSemanticsRuleSet from './rulesets/kinesis.js';
 import lambdaSemanticsRuleSet, { lambdaPreRuleSet } from './rulesets/lambda.js';
 import legendSemanticsRuleSet from './rulesets/legend.js';
+import networkSemanticsRuleSet from './rulesets/network.js';
 import s3SemanticsRuleSet from './rulesets/s3.js';
 import schedulerSemanticsRuleSet from './rulesets/scheduler.js';
 import secretsManagerSemanticsRuleSet from './rulesets/secretsmanager.js';
@@ -41,6 +42,7 @@ export default new NamedRuleSetRegistry({
       schedulerSemanticsRuleSet,
       s3SemanticsRuleSet,
       ecsSemanticsRuleSet,
+      networkSemanticsRuleSet,
       stepFunctionsSemanticsRuleSet,
       secretsManagerSemanticsRuleSet,
       athenaSemanticsRuleSet,

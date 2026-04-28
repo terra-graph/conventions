@@ -62,6 +62,88 @@ describe('dataflow convention rule sets', () => {
     }
   });
 
+  it('shoud include the network semantics rules and remove the old broad api gateway routing matcher', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const serializedRules = phases[0].map((rule) => rule.serialize());
+
+    expect(serializedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'EdgeDirectionSemantic',
+          config: expect.objectContaining({
+            options: expect.objectContaining({
+              semantic: AwsEdgeDirectionSemantics.Routes,
+              enforceDirection: true,
+            }),
+            edge: expect.objectContaining({
+              from: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: ['aws_lb'],
+                }),
+              }),
+              to: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: ['aws_lb_listener'],
+                }),
+              }),
+            }),
+          }),
+        }),
+        expect.objectContaining({
+          id: 'EdgeDirectionSemantic',
+          config: expect.objectContaining({
+            options: expect.objectContaining({
+              semantic: AwsEdgeDirectionSemantics.Invokes,
+              enforceDirection: true,
+            }),
+            edge: expect.objectContaining({
+              from: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: ['aws_apigatewayv2_route', 'aws_api_gateway_method'],
+                }),
+              }),
+              to: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: ['aws_apigatewayv2_integration', 'aws_api_gateway_integration'],
+                }),
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
+
+    expect(serializedRules).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'EdgeDirectionSemantic',
+          config: expect.objectContaining({
+            edge: expect.objectContaining({
+              from: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: [
+                    'aws_lb',
+                    'aws_lb_listener',
+                    'aws_cloudfront_distribution',
+                    'aws_route53_record',
+                  ],
+                }),
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
   it('shoud enforce direction for IAM authorizes semantics', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
       conventionName(Convention.DataFlow, ruleSetName('semantics')),

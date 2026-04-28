@@ -54,9 +54,17 @@ const applyRuleAcrossNodes = (rule: BaseRule, adapter: AdapterOperations): Adapt
 };
 
 describe('AwsNetworkPlacementPlugin.build', () => {
-  it('shoud build one main phase rule with empty enrichers by default', () => {
+  it('shoud build one normalize phase rule with empty enrichers by default', () => {
+    const plugin = new AwsNetworkPlacementPlugin();
+    const result = plugin.build({
+      options: {},
+      namedRules: new NamedRuleRegistry(),
+      namedRuleSets: new NamedRuleSetRegistry(),
+    } as GraphPluginBuildInput<Record<string, unknown>>);
     const rules = buildRules();
 
+    expect(result.phases).toHaveLength(1);
+    expect(result.phases?.[0]?.phase).toBe('normalize');
     expect(rules).toHaveLength(1);
     expect(rules[0]?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',

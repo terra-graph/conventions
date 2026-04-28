@@ -80,35 +80,6 @@ export const apiGatewaySemanticsRuleSet = new RuleSet({
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb', 'aws_lb_listener', 'aws_cloudfront_distribution', 'aws_route53_record'],
-          },
-        },
-        to: {
-          not: {
-            attr: {
-              key: 'terraform.resource',
-              startsWith: [
-                'aws_iam',
-                'aws_lambda_permission',
-                'aws_waf',
-                'aws_acm_certificate_',
-                'aws_cloudfront_origin_access_control',
-                'aws_cloudwatch_log_delivery_source',
-              ],
-            },
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
   ],
 });
 

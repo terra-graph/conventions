@@ -68,8 +68,11 @@ export default new Profile(conventionDataFlowBaseProfileName, {
     {
       phase: 'cleanup',
       rules: [
-        // not sure this semantics re-run is needed?
-        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
+        // Semantics used to be re-run here when network placement/cloning happened later.
+        // Network topology + placement now run in `normalize`, so semantics should already
+        // have seen the normalized graph before `main`. Keep this commented until we confirm
+        // there was no other historical reason for the second pass.
+        // { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
         { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('cleanup')) },
       ],
     },

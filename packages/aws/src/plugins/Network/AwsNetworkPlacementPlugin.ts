@@ -818,7 +818,7 @@ export class AwsNetworkPlacementPlugin extends GraphPlugin<AwsNetworkPlacementPl
     return {
       phases: [
         {
-          phase: 'main',
+          phase: 'normalize',
           rules: [
             new ApplyAwsNetworkPlacementHints({
               node: {
