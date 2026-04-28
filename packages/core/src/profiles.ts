@@ -34,7 +34,7 @@ export const coreDot = new Profile(profileName('dot'), {
       ],
     },
     {
-      phase: 'main',
+      phase: 'cleanup',
       rules: [
         new DotNodeLabel({
           node: {
