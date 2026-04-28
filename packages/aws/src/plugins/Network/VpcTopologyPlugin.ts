@@ -4,6 +4,7 @@ import {
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
   type NodeId,
+  type TgTopologyScope,
   NodeRule,
   type TgGraphHints,
   type TgNodeAttributes,
@@ -30,6 +31,8 @@ type VpcInfo = {
 type SubnetInfo = {
   key: string;
   label: string;
+  name?: string;
+  address?: string;
   nodeId?: NodeId;
   availabilityZone?: string;
   vpcReferences: Set<string>;
@@ -37,15 +40,7 @@ type SubnetInfo = {
 };
 
 type ResolvedTopology = {
-  scopes: Record<
-    string,
-    {
-      id: string;
-      label: string;
-      parentId?: string;
-      order: number;
-    }
-  >;
+  scopes: Record<string, TgTopologyScope>;
 };
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
@@ -71,6 +66,43 @@ const buildVpcAzScopeId = (vpcKey: string, az: string): string =>
   `${buildVpcScopeId(vpcKey)}:az:${az}`;
 const buildSubnetScopeId = (vpcKey: string, az: string, subnetKey: string): string =>
   `${buildVpcAzScopeId(vpcKey, az)}:subnet:${subnetKey}`;
+const buildVpcAzLaneGroupId = (vpcKey: string): string => `${buildVpcScopeId(vpcKey)}:az-lanes`;
+
+const resolveSubnetSlotKeyCandidate = (value: string | undefined): string | undefined => {
+  const candidate = toStringValue(value)?.toLowerCase();
+  if (!candidate) {
+    return undefined;
+  }
+
+  /* istanbul ignore next -- split on a non-empty string always yields at least one segment */
+  const segment = candidate.split('.').at(-1) ?? candidate;
+  const strippedIndex = segment.replace(/\[\d+\]$/g, '');
+  const tokens = strippedIndex.split(/[^a-z0-9]+/).filter((token) => token.length > 0);
+  if (tokens.length < 2) {
+    return strippedIndex;
+  }
+
+  /* istanbul ignore next -- tokens.length >= 2 here, so the last token is always defined */
+  const lastToken = tokens[tokens.length - 1] ?? '';
+  if (
+    /^[a-z]$/.test(lastToken) ||
+    /^\d+$/.test(lastToken) ||
+    /^\d+[a-z]$/.test(lastToken) ||
+    /^az\d+$/.test(lastToken)
+  ) {
+    return tokens.slice(0, -1).join('_');
+  }
+
+  return strippedIndex;
+};
+
+const resolveSubnetSlotKey = (subnet: SubnetInfo): string => {
+  return (
+    resolveSubnetSlotKeyCandidate(subnet.name) ??
+    resolveSubnetSlotKeyCandidate(subnet.address) ??
+    subnet.key
+  );
+};
 
 class ApplyVpcTopologyHints extends NodeRule {
   public override apply(
@@ -196,6 +228,8 @@ class ApplyVpcTopologyHints extends NodeRule {
         const subnetId = toStringValue(values.id);
         const subnetKey = subnetId ?? name ?? address ?? terraformAddress ?? String(currentNodeId);
         const subnet = ensureSubnet(subnetKey, subnetId ?? name ?? subnetKey);
+        subnet.name = name ?? subnet.name;
+        subnet.address = terraformAddress ?? address ?? subnet.address;
         subnet.nodeId = currentNodeId;
         subnet.availabilityZone =
           toStringValue(values.availability_zone) ?? subnet.availabilityZone;
@@ -284,6 +318,11 @@ class ApplyVpcTopologyHints extends NodeRule {
           parentId: vpcScopeId,
           label: az,
           order: order++,
+          layout: {
+            mode: 'symmetric',
+            groupId: buildVpcAzLaneGroupId(vpcKey),
+            laneKey: az,
+          },
         };
 
         const azSubnets = vpcSubnets
@@ -297,6 +336,9 @@ class ApplyVpcTopologyHints extends NodeRule {
             parentId: azScopeId,
             label: subnet.label,
             order: order++,
+            layout: {
+              slotKey: resolveSubnetSlotKey(subnet),
+            },
           };
         }
       }

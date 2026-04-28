@@ -11,6 +11,7 @@ import {
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
 import { applyAwsNetworkVisibilityMode } from './VpcEnrichers/Visibility/index.js';
+import { resolveAwsSubnetContentSlot } from './VpcEnrichers/ContentSlots/index.js';
 import {
   type AwsNetworkPlacementPluginOptions,
   type PlacementContext,
@@ -63,8 +64,14 @@ type ClonePlan = {
 };
 
 type PlacementPlan = {
-  placements: Map<NodeId, string>;
+  placements: Map<NodeId, NodeTopologyPlacement>;
   clonePlans: ClonePlan[];
+};
+
+type NodeTopologyPlacement = {
+  scopeId: string;
+  slotKey?: string;
+  slotOrder?: number;
 };
 
 const buildVpcScopeId = (vpcKey: string): string => `vpc:${vpcKey}`;
@@ -129,8 +136,8 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
     const plan = this.resolvePlacementPlan(graph, enrichers);
 
     let updated = graph;
-    for (const [currentNodeId, scopeId] of plan.placements.entries()) {
-      updated = this.upsertScope(updated, currentNodeId, scopeId);
+    for (const [currentNodeId, placement] of plan.placements.entries()) {
+      updated = this.upsertTopologyPlacement(updated, currentNodeId, placement);
     }
 
     updated = this.applyClonePlans(updated, plan.clonePlans);
@@ -145,7 +152,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
   ): PlacementPlan {
     const enabledEnrichers = [...enrichers].sort((left, right) => left.id.localeCompare(right.id));
     const context = this.buildPlacementContext(graph, enabledEnrichers);
-    const placements = new Map<NodeId, string>();
+    const placements = new Map<NodeId, NodeTopologyPlacement>();
     const clonePlans: ClonePlan[] = [];
 
     const nodeIds = [...graph.nodeIds()].sort((left, right) =>
@@ -156,7 +163,11 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       if (replicaSubnetKey) {
         const scopeId = this.resolveSubnetScope(replicaSubnetKey, context.subnets);
         if (scopeId) {
-          placements.set(currentNodeId, scopeId);
+          const replicaNode = graph.getNodeAttributes(currentNodeId);
+          placements.set(
+            currentNodeId,
+            this.buildTopologyPlacement(scopeId, replicaNode?.terraform?.resource),
+          );
         }
         continue;
       }
@@ -275,12 +286,18 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
             context.subnets,
           );
           if (subnetVpcScope) {
-            placements.set(currentNodeId, subnetVpcScope);
+            placements.set(
+              currentNodeId,
+              this.buildTopologyPlacement(subnetVpcScope, resource),
+            );
           }
         } else {
           const scopeId = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
           if (scopeId) {
-            placements.set(currentNodeId, scopeId);
+            placements.set(
+              currentNodeId,
+              this.buildTopologyPlacement(scopeId, resource),
+            );
           }
         }
         continue;
@@ -302,7 +319,10 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
           ) {
             const firstSubnetScope = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
             if (firstSubnetScope) {
-              placements.set(currentNodeId, firstSubnetScope);
+              placements.set(
+                currentNodeId,
+                this.buildTopologyPlacement(firstSubnetScope, resource),
+              );
             }
 
             const existingAdditionalReplicaCount = sortedSubnetKeys
@@ -341,11 +361,20 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
             continue;
           }
 
-          placements.set(currentNodeId, buildVpcScopeId(uniqueSubnetVpcKeys[0]));
+          placements.set(
+            currentNodeId,
+            this.buildTopologyPlacement(
+              buildVpcScopeId(uniqueSubnetVpcKeys[0]),
+              resource,
+            ),
+          );
         } else if (networkAware) {
           const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
           if (fallbackVpcKey) {
-            placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
+            placements.set(
+              currentNodeId,
+              this.buildTopologyPlacement(buildVpcScopeId(fallbackVpcKey), resource),
+            );
           }
         }
 
@@ -353,11 +382,17 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       }
 
       if (vpcKeys.size === 1) {
-        placements.set(currentNodeId, buildVpcScopeId([...vpcKeys][0]));
+        placements.set(
+          currentNodeId,
+          this.buildTopologyPlacement(buildVpcScopeId([...vpcKeys][0]), resource),
+        );
       } else if (networkAware) {
         const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
         if (fallbackVpcKey) {
-          placements.set(currentNodeId, buildVpcScopeId(fallbackVpcKey));
+          placements.set(
+            currentNodeId,
+            this.buildTopologyPlacement(buildVpcScopeId(fallbackVpcKey), resource),
+          );
         }
       }
     }
@@ -643,10 +678,34 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
     return undefined;
   }
 
-  private upsertScope(
+  private buildTopologyPlacement(
+    scopeId: string,
+    resource: string | undefined,
+  ): NodeTopologyPlacement {
+    const placement: NodeTopologyPlacement = {
+      scopeId,
+    };
+
+    if (!scopeId.includes(':subnet:')) {
+      return placement;
+    }
+
+    const contentSlot = resolveAwsSubnetContentSlot(resource);
+    if (!contentSlot) {
+      return placement;
+    }
+
+    return {
+      ...placement,
+      slotKey: contentSlot.slotKey,
+      slotOrder: contentSlot.slotOrder,
+    };
+  }
+
+  private upsertTopologyPlacement(
     graph: AdapterOperations,
     nodeId: NodeId,
-    scopeId: string,
+    placement: NodeTopologyPlacement,
   ): AdapterOperations {
     const node = graph.getNodeAttributes(nodeId);
     if (!node) {
@@ -655,7 +714,27 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
     const currentHints = isObjectRecord(node.hints) ? node.hints : {};
     const currentTopology = isObjectRecord(currentHints.topology) ? currentHints.topology : {};
-    if (currentTopology.scopeId === scopeId) {
+    const currentTopologyRecord = currentTopology as Record<string, unknown>;
+    const nextTopology: Record<string, unknown> = {
+      ...currentTopology,
+      scopeId: placement.scopeId,
+    };
+    if (placement.slotKey) {
+      nextTopology.slotKey = placement.slotKey;
+    } else {
+      delete nextTopology.slotKey;
+    }
+    if (typeof placement.slotOrder === 'number') {
+      nextTopology.slotOrder = placement.slotOrder;
+    } else {
+      delete nextTopology.slotOrder;
+    }
+
+    if (
+      currentTopology.scopeId === nextTopology.scopeId &&
+      currentTopologyRecord.slotKey === nextTopology.slotKey &&
+      currentTopologyRecord.slotOrder === nextTopology.slotOrder
+    ) {
       return graph;
     }
 
@@ -663,10 +742,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       ...node,
       hints: {
         ...currentHints,
-        topology: {
-          ...currentTopology,
-          scopeId,
-        },
+        topology: nextTopology,
       },
     });
   }
@@ -693,10 +769,13 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
           id: cloneNodeId,
         };
 
-        updated = this.upsertScope(
+        updated = this.upsertTopologyPlacement(
           updated.setNodeAttributes(cloneNodeId, cloneAttributes),
           cloneNodeId,
-          cloneScopeId,
+          this.buildTopologyPlacement(
+            cloneScopeId,
+            toStringValue(sourceNode.terraform?.resource),
+          ),
         );
 
         for (const edge of clonePlan.incomingEdges) {

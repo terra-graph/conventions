@@ -196,6 +196,35 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     expect(scopes['vpc:vpc-1:az:eu-west-2a:subnet:subnet-3']).toBeDefined();
     expect(scopes['vpc:vpc-1:az:eu-west-2b']).toBeDefined();
     expect(scopes['vpc:vpc-1:az:eu-west-2b:subnet:subnet-2']).toBeDefined();
+    expect(scopes['vpc:vpc-1:az:eu-west-2a']).toMatchObject({
+      layout: {
+        mode: 'symmetric',
+        groupId: 'vpc:vpc-1:az-lanes',
+        laneKey: 'eu-west-2a',
+      },
+    });
+    expect(scopes['vpc:vpc-1:az:eu-west-2b']).toMatchObject({
+      layout: {
+        mode: 'symmetric',
+        groupId: 'vpc:vpc-1:az-lanes',
+        laneKey: 'eu-west-2b',
+      },
+    });
+    expect(scopes['vpc:vpc-1:az:eu-west-2a:subnet:subnet-1']).toMatchObject({
+      layout: {
+        slotKey: 'a',
+      },
+    });
+    expect(scopes['vpc:vpc-1:az:eu-west-2a:subnet:subnet-3']).toMatchObject({
+      layout: {
+        slotKey: 'a2',
+      },
+    });
+    expect(scopes['vpc:vpc-1:az:eu-west-2b:subnet:subnet-2']).toMatchObject({
+      layout: {
+        slotKey: 'b',
+      },
+    });
 
     expect(updated.getNodeAttributes(instanceId)?.hints?.topology).toBeUndefined();
 
@@ -378,6 +407,111 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     expect(scopes?.['vpc:this[0]:az:eu-west-2a:subnet:private[0]']).toBeDefined();
     expect(scopes?.['vpc:this[0]:az:eu-west-2b']).toBeDefined();
     expect(scopes?.['vpc:this[0]:az:eu-west-2b:subnet:private[1]']).toBeDefined();
+    expect(scopes?.['vpc:this[0]:az:eu-west-2a']).toMatchObject({
+      layout: {
+        mode: 'symmetric',
+        groupId: 'vpc:this[0]:az-lanes',
+        laneKey: 'eu-west-2a',
+      },
+    });
+    expect(scopes?.['vpc:this[0]:az:eu-west-2b']).toMatchObject({
+      layout: {
+        mode: 'symmetric',
+        groupId: 'vpc:this[0]:az-lanes',
+        laneKey: 'eu-west-2b',
+      },
+    });
+    expect(scopes?.['vpc:this[0]:az:eu-west-2a:subnet:private[0]']).toMatchObject({
+      layout: {
+        slotKey: 'private',
+      },
+    });
+    expect(scopes?.['vpc:this[0]:az:eu-west-2b:subnet:private[1]']).toMatchObject({
+      layout: {
+        slotKey: 'private',
+      },
+    });
+  });
+
+  it('shoud normalize subnet slot keys by dropping az-like suffixes from subnet names', () => {
+    const [rule] = buildRules();
+    if (!rule) {
+      throw new Error('Expected topology rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.private_a');
+    const subnetBId = asNodeId('resource.aws_subnet.private_b');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_a',
+            resource: 'aws_subnet',
+            name: 'private_a',
+            state: buildTerraformState('aws_subnet.private_a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_b',
+            resource: 'aws_subnet',
+            name: 'private_b',
+            state: buildTerraformState('aws_subnet.private_b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const scopes = (
+      updated.toTgGraph() as TgGraph & {
+        hints?: {
+          topology?: {
+            scopes?: Record<string, unknown>;
+          };
+        };
+      }
+    ).hints?.topology?.scopes;
+
+    expect(scopes?.['vpc:vpc-1:az:eu-west-2a:subnet:subnet-a']).toMatchObject({
+      layout: {
+        slotKey: 'private',
+      },
+    });
+    expect(scopes?.['vpc:vpc-1:az:eu-west-2b:subnet:subnet-b']).toMatchObject({
+      layout: {
+        slotKey: 'private',
+      },
+    });
   });
 
   it('shoud infer vpc and subnet scopes from non-container references when vpc and subnet resources are absent', () => {
@@ -954,5 +1088,12 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     ).hints?.topology?.scopes;
 
     expect(scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`]).toBeDefined();
+    expect(
+      scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`],
+    ).toMatchObject({
+      layout: {
+        slotKey: String(subnetId),
+      },
+    });
   });
 });

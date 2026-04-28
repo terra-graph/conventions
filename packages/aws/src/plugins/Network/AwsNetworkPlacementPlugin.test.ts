@@ -345,6 +345,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
       expect.objectContaining({
         topology: expect.objectContaining({
           scopeId: 'vpc:vpc-1:az:eu-west-2a:subnet:subnet-1',
+          slotKey: 'application',
+          slotOrder: 30,
         }),
       }),
     );
@@ -352,6 +354,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
       expect.objectContaining({
         topology: expect.objectContaining({
           scopeId: 'vpc:vpc-1:az:eu-west-2a:subnet:subnet-1',
+          slotKey: 'ingress',
+          slotOrder: 10,
         }),
       }),
     );
@@ -360,6 +364,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
       expect.objectContaining({
         topology: expect.objectContaining({
           scopeId: 'vpc:vpc-1:az:eu-west-2b:subnet:subnet-2',
+          slotKey: 'ingress',
+          slotOrder: 10,
         }),
       }),
     );
@@ -367,6 +373,14 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
       expect.objectContaining({
         topology: expect.objectContaining({
           scopeId: 'vpc:vpc-1',
+        }),
+      }),
+    );
+    expect(updated.getNodeAttributes(igwId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.not.objectContaining({
+          slotKey: expect.anything(),
+          slotOrder: expect.anything(),
         }),
       }),
     );
@@ -479,15 +493,44 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(asgSingleId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
     );
+    expect(updated.getNodeAttributes(asgSingleId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          slotKey: 'application',
+          slotOrder: 30,
+        }),
+      }),
+    );
     expect(updated.getNodeAttributes(asgMultiId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+    expect(updated.getNodeAttributes(asgMultiId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          slotKey: 'application',
+        }),
+      }),
     );
     const asgMultiReplicaId = asNodeId(`${String(asgMultiId)}:replica:subnet:subnet-b`);
     expect(updated.getNodeAttributes(asgMultiReplicaId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
     );
+    expect(updated.getNodeAttributes(asgMultiReplicaId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          slotKey: 'application',
+        }),
+      }),
+    );
     expect(updated.getNodeAttributes(asgFallbackId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+    expect(updated.getNodeAttributes(asgFallbackId)?.hints).toEqual(
+      expect.objectContaining({
+        topology: expect.objectContaining({
+          slotKey: 'application',
+        }),
+      }),
     );
   });
 
