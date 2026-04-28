@@ -1,3 +1,11 @@
+## [1.0.0-rc.16](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.15...@terra-graph/conventions-core@1.0.0-rc.16) (2026-04-28)
+
+### Features
+
+* better node image and label layout ([da28ad9](https://github.com/terra-graph/conventions/commit/da28ad9325395a5fdb6947957858652f5f356f22))
+* ec2 vpc ([3f437d3](https://github.com/terra-graph/conventions/commit/3f437d3c0010dfc736a79812cf3f447db859aabd))
+* improved network management ([5be1c9e](https://github.com/terra-graph/conventions/commit/5be1c9e751400a21ad30ce0479842788612f31ff))
+
 ## [1.0.0-rc.15](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.14...@terra-graph/conventions-core@1.0.0-rc.15) (2026-04-25)
 
 ### Features
