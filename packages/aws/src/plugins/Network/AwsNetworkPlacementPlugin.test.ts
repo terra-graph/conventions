@@ -13,15 +13,22 @@ import {
 } from '@terra-graph/core';
 import { AwsNetworkPlacementPlugin } from './AwsNetworkPlacementPlugin.js';
 
-const buildRules = (options: unknown = {}): BaseRule[] => {
+const buildPhases = (options: unknown = {}) => {
   const plugin = new AwsNetworkPlacementPlugin();
-  const result = plugin.build({
+  return plugin.build({
     options,
     namedRules: new NamedRuleRegistry(),
     namedRuleSets: new NamedRuleSetRegistry(),
   } as GraphPluginBuildInput<Record<string, unknown>>);
+};
 
-  return (result.phases ?? []).flatMap((phase) => phase.rules as BaseRule[]);
+const buildRules = (options: unknown = {}, phase?: 'normalize' | 'cleanup'): BaseRule[] => {
+  const result = buildPhases(options);
+  const phases = phase
+    ? (result.phases ?? []).filter((currentPhase) => currentPhase.phase === phase)
+    : (result.phases ?? []);
+
+  return phases.flatMap((currentPhase) => currentPhase.rules as BaseRule[]);
 };
 
 const buildAdapter = (graph: TgGraph): AdapterOperations => {
@@ -54,20 +61,28 @@ const applyRuleAcrossNodes = (rule: BaseRule, adapter: AdapterOperations): Adapt
 };
 
 describe('AwsNetworkPlacementPlugin.build', () => {
-  it('shoud build one normalize phase rule with empty enrichers by default', () => {
-    const plugin = new AwsNetworkPlacementPlugin();
-    const result = plugin.build({
-      options: {},
-      namedRules: new NamedRuleRegistry(),
-      namedRuleSets: new NamedRuleSetRegistry(),
-    } as GraphPluginBuildInput<Record<string, unknown>>);
-    const rules = buildRules();
+  it('shoud build normalize and cleanup rules with empty enrichers by default', () => {
+    const result = buildPhases();
+    const normalizeRules = buildRules({}, 'normalize');
+    const cleanupRules = buildRules({}, 'cleanup');
 
-    expect(result.phases).toHaveLength(1);
-    expect(result.phases?.[0]?.phase).toBe('normalize');
-    expect(rules).toHaveLength(1);
-    expect(rules[0]?.serialize()).toStrictEqual({
+    expect(result.phases?.map((phase) => phase.phase)).toStrictEqual(['normalize', 'cleanup']);
+    expect(normalizeRules).toHaveLength(1);
+    expect(cleanupRules).toHaveLength(1);
+    expect(normalizeRules[0]?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
+      config: {
+        node: {
+          any: true,
+        },
+        options: {
+          enrichers: [],
+          mode: 'full',
+        },
+      },
+    });
+    expect(cleanupRules[0]?.serialize()).toStrictEqual({
+      id: 'ApplyAwsNetworkCleanup',
       config: {
         node: {
           any: true,
@@ -81,10 +96,13 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud keep only supported enrichers and ignore invalid shapes', () => {
-    const [rule] = buildRules({
-      enrichers: ['network', 'unknown', 1],
-      ignored: true,
-    });
+    const [rule] = buildRules(
+      {
+        enrichers: ['network', 'unknown', 1],
+        ignored: true,
+      },
+      'normalize',
+    );
 
     expect(rule?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
@@ -99,7 +117,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
       },
     });
 
-    const [ruleWithInvalidShape] = buildRules({ enrichers: 'network' });
+    const [ruleWithInvalidShape] = buildRules({ enrichers: 'network' }, 'normalize');
     expect(ruleWithInvalidShape?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
       config: {
@@ -113,7 +131,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
       },
     });
 
-    const [ruleWithNonObjectOptions] = buildRules(null);
+    const [ruleWithNonObjectOptions] = buildRules(null, 'normalize');
     expect(ruleWithNonObjectOptions?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
       config: {
@@ -129,9 +147,12 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud normalize supported enricher ids deterministically', () => {
-    const [rule] = buildRules({
-      enrichers: ['efs', 'network', 'efs', 'network', 'unknown'],
-    });
+    const [rule] = buildRules(
+      {
+        enrichers: ['efs', 'network', 'efs', 'network', 'unknown'],
+      },
+      'normalize',
+    );
 
     expect(rule?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
@@ -148,9 +169,12 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud apply with multiple enabled enrichers without relying on registration order', () => {
-    const [rule] = buildRules({
-      enrichers: ['network', 'efs'],
-    });
+    const [rule] = buildRules(
+      {
+        enrichers: ['network', 'efs'],
+      },
+      'normalize',
+    );
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -179,10 +203,13 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud normalize supported visibility modes and fallback to full for invalid values', () => {
-    const [rule] = buildRules({
-      enrichers: ['network'],
-      mode: 'minimal',
-    });
+    const [rule] = buildRules(
+      {
+        enrichers: ['network'],
+        mode: 'minimal',
+      },
+      'normalize',
+    );
 
     expect(rule?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
@@ -197,10 +224,13 @@ describe('AwsNetworkPlacementPlugin.build', () => {
       },
     });
 
-    const [ruleWithInvalidMode] = buildRules({
-      enrichers: ['network'],
-      mode: 'invalid',
-    });
+    const [ruleWithInvalidMode] = buildRules(
+      {
+        enrichers: ['network'],
+        mode: 'invalid',
+      },
+      'normalize',
+    );
 
     expect(ruleWithInvalidMode?.serialize()).toStrictEqual({
       id: 'ApplyAwsNetworkPlacementHints',
@@ -217,7 +247,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   });
 
   it('shoud no-op when apply is invoked before matching', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['network'] }, 'normalize');
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1555,6 +1585,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             updated.edgeTarget(edgeId) === subnetAId || updated.edgeTarget(edgeId) === subnetBId,
         ),
     ).toBe(true);
+    expect(updated.outEdges(subnetGroupId).some((edgeId) => updated.edgeTarget(edgeId) === replicaId)).toBe(false);
+    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetGroupId)).toBe(false);
   });
 
   it('shoud tolerate missing node lookups and preserve idempotence on reruns', () => {
@@ -2684,10 +2716,143 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(noResourceId)).toBeDefined();
   });
 
-  it('shoud suppress architecture-noise resources and reconnect their edges in architecture mode', () => {
-    const [rule] = buildRules({ mode: 'architecture' });
+  it('shoud remove topology nodes in full mode without additional network suppression', () => {
+    const [rule] = buildRules({ mode: 'full' }, 'cleanup');
     if (!rule) {
-      throw new Error('Expected placement rule');
+      throw new Error('Expected cleanup rule');
+    }
+
+    const appId = asNodeId('resource.aws_instance.app');
+    const routeId = asNodeId('resource.aws_route.private_default');
+    const routeTableId = asNodeId('resource.aws_route_table.private');
+    const subnetId = asNodeId('resource.aws_subnet.private_a');
+    const vpcId = asNodeId('resource.aws_vpc.main');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [appId]: {
+          id: appId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_instance.app',
+            resource: 'aws_instance',
+            name: 'app',
+          },
+        },
+        [routeId]: {
+          id: routeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_route.private_default',
+            resource: 'aws_route',
+            name: 'private_default',
+          },
+        },
+        [routeTableId]: {
+          id: routeTableId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_route_table.private',
+            resource: 'aws_route_table',
+            name: 'private',
+          },
+        },
+        [subnetId]: {
+          id: subnetId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_a',
+            resource: 'aws_subnet',
+            name: 'private_a',
+          },
+        },
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-app-route'),
+          from: appId,
+          to: routeId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-route-route-table'),
+          from: routeId,
+          to: routeTableId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-route-table-subnet'),
+          from: routeTableId,
+          to: subnetId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-subnet-vpc'),
+          from: subnetId,
+          to: vpcId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    expect(updated.getNodeAttributes(vpcId)).toBeUndefined();
+    expect(updated.getNodeAttributes(subnetId)).toBeUndefined();
+    expect(updated.getNodeAttributes(routeId)).toBeDefined();
+    expect(updated.getNodeAttributes(routeTableId)).toBeDefined();
+    expect(updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === routeId)).toBe(
+      true,
+    );
+    expect(updated.outEdges(routeTableId)).toHaveLength(0);
+  });
+
+  it('shoud no-op cleanup when apply is invoked before matching', () => {
+    const [rule] = buildRules({ mode: 'full' }, 'cleanup');
+    if (!rule) {
+      throw new Error('Expected cleanup rule');
+    }
+
+    const nodeId = asNodeId('resource.aws_vpc.main');
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [nodeId]: {
+          id: nodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+          },
+        },
+      },
+      edges: [],
+    });
+
+    const node = adapter.getNodeAttributes(nodeId);
+    if (!node) {
+      throw new Error('Expected node');
+    }
+
+    expect(rule.apply(nodeId, node, adapter)).toBe(adapter);
+  });
+
+  it('shoud suppress architecture-noise resources and reconnect their edges in architecture mode', () => {
+    const [rule] = buildRules({ mode: 'architecture' }, 'cleanup');
+    if (!rule) {
+      throw new Error('Expected cleanup rule');
     }
 
     const appId = asNodeId('resource.aws_instance.app');
@@ -2772,19 +2937,18 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     const updated = applyRuleAcrossNodes(rule, adapter);
     expect(updated.getNodeAttributes(ingressRuleId)).toBeUndefined();
+    expect(updated.getNodeAttributes(vpcId)).toBeUndefined();
     expect(
       updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === securityGroupId),
     ).toBe(true);
-    expect(updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === vpcId)).toBe(
-      true,
-    );
+    expect(updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === vpcId)).toBe(false);
   });
 
   it('shoud keep architecture-level resources but suppress additional route resources in minimal mode', () => {
-    const [architectureRule] = buildRules({ mode: 'architecture' });
-    const [minimalRule] = buildRules({ mode: 'minimal' });
+    const [architectureRule] = buildRules({ mode: 'architecture' }, 'cleanup');
+    const [minimalRule] = buildRules({ mode: 'minimal' }, 'cleanup');
     if (!architectureRule || !minimalRule) {
-      throw new Error('Expected placement rules');
+      throw new Error('Expected cleanup rules');
     }
 
     const appId = asNodeId('resource.aws_instance.app');
@@ -2863,12 +3027,124 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
 
     expect(architectureView.getNodeAttributes(routeId)).toBeDefined();
     expect(architectureView.getNodeAttributes(routeTableId)).toBeDefined();
+    expect(architectureView.getNodeAttributes(vpcId)).toBeUndefined();
 
     expect(minimalView.getNodeAttributes(routeId)).toBeUndefined();
     expect(minimalView.getNodeAttributes(routeTableId)).toBeUndefined();
-    expect(
-      minimalView.outEdges(appId).some((edgeId) => minimalView.edgeTarget(edgeId) === vpcId),
-    ).toBe(true);
+    expect(minimalView.getNodeAttributes(vpcId)).toBeUndefined();
+  });
+
+  it('shoud skip clone replay edges that only stitch the source node to its replicas', () => {
+    const [rule] = buildRules({ enrichers: ['network'] }, 'normalize');
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.private_a');
+    const subnetBId = asNodeId('resource.aws_subnet.private_b');
+    const lbId = asNodeId('resource.aws_lb.this');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_a',
+            resource: 'aws_subnet',
+            name: 'private_a',
+            state: buildTerraformState('aws_subnet.private_a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.private_b',
+            resource: 'aws_subnet',
+            name: 'private_b',
+            state: buildTerraformState('aws_subnet.private_b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [lbId]: {
+          id: lbId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.this',
+            resource: 'aws_lb',
+            name: 'this',
+            state: buildTerraformState('aws_lb.this', {
+              subnet_ids: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-lb-self-out'),
+          from: lbId,
+          to: lbId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-lb-subnet-a'),
+          from: lbId,
+          to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-lb-subnet-b'),
+          from: lbId,
+          to: subnetBId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const replicaId = asNodeId(`${String(lbId)}:replica:subnet:subnet-b`);
+
+    expect(updated.getNodeAttributes(replicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+    expect(updated.outEdges(lbId).some((edgeId) => updated.edgeTarget(edgeId) === replicaId)).toBe(
+      false,
+    );
+    expect(updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === lbId)).toBe(
+      false,
+    );
+    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(
+      false,
+    );
+    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetAId)).toBe(
+      true,
+    );
+    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetBId)).toBe(
+      true,
+    );
   });
 
   it('shoud infer and place direct vpc references without explicit vpc resource nodes', () => {

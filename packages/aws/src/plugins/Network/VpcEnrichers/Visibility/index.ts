@@ -2,6 +2,7 @@ import { type AdapterOperations, type NodeId, edgeIdFrom } from '@terra-graph/co
 import { toStringValue } from '../shared.js';
 import type { AwsNetworkVisibilityMode } from '../types.js';
 
+const TOPOLOGY_RESOURCES = new Set<string>(['aws_vpc', 'aws_subnet']);
 const ARCHITECTURE_NOISE_RESOURCES = new Set<string>([
   'aws_vpc_security_group_ingress_rule',
   'aws_vpc_security_group_egress_rule',
@@ -79,6 +80,29 @@ const removeNodeAndReconnectEdges = (
   return updated.removeNode(nodeId);
 };
 
+const removeTopologyNodes = (graph: AdapterOperations): AdapterOperations => {
+  let updated = graph;
+  const nodeIds = [...graph.nodeIds()].sort((left, right) =>
+    String(left).localeCompare(String(right)),
+  );
+
+  for (const nodeId of nodeIds) {
+    const node = updated.getNodeAttributes(nodeId);
+    if (!node) {
+      continue;
+    }
+
+    const resource = toStringValue(node.terraform?.resource);
+    if (!resource || !TOPOLOGY_RESOURCES.has(resource)) {
+      continue;
+    }
+
+    updated = updated.removeNode(nodeId);
+  }
+
+  return updated;
+};
+
 export const applyAwsNetworkVisibilityMode = (
   graph: AdapterOperations,
   mode: AwsNetworkVisibilityMode,
@@ -108,3 +132,12 @@ export const applyAwsNetworkVisibilityMode = (
 
   return updated;
 };
+
+export const applyAwsNetworkCleanup = (
+  graph: AdapterOperations,
+  mode: AwsNetworkVisibilityMode,
+): AdapterOperations => {
+  return applyAwsNetworkVisibilityMode(removeTopologyNodes(graph), mode);
+};
+
+export { ApplyAwsNetworkCleanup } from './ApplyAwsNetworkCleanup.js';

@@ -3,6 +3,7 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
+  type NamedPhase,
   type NodeId,
   NodeRule,
   type TgNodeAttributes,
@@ -10,7 +11,7 @@ import {
   edgeIdFrom,
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
-import { applyAwsNetworkVisibilityMode } from './VpcEnrichers/Visibility/index.js';
+import { ApplyAwsNetworkCleanup } from './VpcEnrichers/Visibility/index.js';
 import { resolveAwsSubnetContentSlot } from './VpcEnrichers/ContentSlots/index.js';
 import {
   type AwsNetworkPlacementPluginOptions,
@@ -140,10 +141,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
       updated = this.upsertTopologyPlacement(updated, currentNodeId, placement);
     }
 
-    updated = this.applyClonePlans(updated, plan.clonePlans);
-    updated = applyAwsNetworkVisibilityMode(updated, placementOptions.mode);
-
-    return updated;
+    return this.applyClonePlans(updated, plan.clonePlans);
   }
 
   private resolvePlacementPlan(
@@ -779,6 +777,10 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         );
 
         for (const edge of clonePlan.incomingEdges) {
+          if (edge.source === clonePlan.sourceNodeId) {
+            continue;
+          }
+
           const cloneInEdgeId = edgeIdFrom(
             edge.source,
             cloneNodeId,
@@ -788,6 +790,10 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         }
 
         for (const edge of clonePlan.outgoingEdges) {
+          if (edge.target === clonePlan.sourceNodeId) {
+            continue;
+          }
+
           const cloneOutEdgeId = edgeIdFrom(
             cloneNodeId,
             edge.target,
@@ -815,6 +821,10 @@ export class AwsNetworkPlacementPlugin extends GraphPlugin<AwsNetworkPlacementPl
   public override build(
     input: GraphPluginBuildInput<AwsNetworkPlacementPluginOptions>,
   ): GraphPluginBuildResult {
+    const options = {
+      ...resolveAwsNetworkPlacementOptions(input.options),
+    };
+
     return {
       phases: [
         {
@@ -824,9 +834,18 @@ export class AwsNetworkPlacementPlugin extends GraphPlugin<AwsNetworkPlacementPl
               node: {
                 any: true,
               },
-              options: {
-                ...resolveAwsNetworkPlacementOptions(input.options),
+              options,
+            }),
+          ],
+        },
+        {
+          phase: 'cleanup' as NamedPhase,
+          rules: [
+            new ApplyAwsNetworkCleanup({
+              node: {
+                any: true,
               },
+              options,
             }),
           ],
         },
