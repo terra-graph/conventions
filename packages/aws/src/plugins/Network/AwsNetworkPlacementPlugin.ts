@@ -94,6 +94,22 @@ const parseReplicaSubnetKey = (nodeId: NodeId): string | undefined => {
   return subnetKey.length > 0 ? subnetKey : undefined;
 };
 
+const parseScopeSubnetKey = (scopeId: unknown): string | undefined => {
+  if (typeof scopeId !== 'string') {
+    return undefined;
+  }
+
+  const marker = ':subnet:';
+  const index = scopeId.lastIndexOf(marker);
+  if (index < 0) {
+    return undefined;
+  }
+
+  const subnetKey = scopeId.slice(index + marker.length);
+  /* istanbul ignore next -- malformed topology scope ids should behave the same as missing subnet scope */
+  return subnetKey.length > 0 ? subnetKey : undefined;
+};
+
 const isSubnetGroupResource = (resource: string | undefined): boolean => {
   if (!resource) {
     return false;
@@ -775,18 +791,35 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
             toStringValue(sourceNode.terraform?.resource),
           ),
         );
+      }
+    }
+
+    for (const clonePlan of clonePlans) {
+      const cloneSubnetKeys = clonePlan.subnetKeys.slice(1);
+      for (const subnetKey of cloneSubnetKeys) {
+        const cloneNodeId = buildReplicaNodeId(clonePlan.sourceNodeId, subnetKey);
+        const cloneScopeId = clonePlan.subnetScopeIds[subnetKey];
+        /* istanbul ignore next -- defensive guard for malformed clone plans */
+        if (!cloneScopeId) {
+          continue;
+        }
 
         for (const edge of clonePlan.incomingEdges) {
           if (edge.source === clonePlan.sourceNodeId) {
             continue;
           }
 
+          const cloneSourceId = this.resolveCloneEdgeEndpoint(updated, edge.source, subnetKey);
+          if (!cloneSourceId) {
+            continue;
+          }
+
           const cloneInEdgeId = edgeIdFrom(
-            edge.source,
+            cloneSourceId,
             cloneNodeId,
             `aws.network.clone:in:${edge.id}:subnet:${subnetKey}`,
           );
-          updated = updated.setEdge(cloneInEdgeId, edge.source, cloneNodeId, edge.attributes);
+          updated = updated.setEdge(cloneInEdgeId, cloneSourceId, cloneNodeId, edge.attributes);
         }
 
         for (const edge of clonePlan.outgoingEdges) {
@@ -794,17 +827,51 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
             continue;
           }
 
+          const cloneTargetId = this.resolveCloneEdgeEndpoint(updated, edge.target, subnetKey);
+          if (!cloneTargetId) {
+            continue;
+          }
+
           const cloneOutEdgeId = edgeIdFrom(
             cloneNodeId,
-            edge.target,
+            cloneTargetId,
             `aws.network.clone:out:${edge.id}:subnet:${subnetKey}`,
           );
-          updated = updated.setEdge(cloneOutEdgeId, cloneNodeId, edge.target, edge.attributes);
+          updated = updated.setEdge(cloneOutEdgeId, cloneNodeId, cloneTargetId, edge.attributes);
         }
       }
     }
 
     return updated;
+  }
+
+  private resolveCloneEdgeEndpoint(
+    graph: AdapterOperations,
+    nodeId: NodeId,
+    subnetKey: string,
+  ): NodeId | undefined {
+    const existingReplicaSubnetKey = parseReplicaSubnetKey(nodeId);
+    if (existingReplicaSubnetKey) {
+      return existingReplicaSubnetKey === subnetKey ? nodeId : undefined;
+    }
+
+    const node = graph.getNodeAttributes(nodeId);
+    /* istanbul ignore next -- defensive guard for endpoints disappearing after clone edge snapshots */
+    if (!node) {
+      return undefined;
+    }
+
+    const scopedSubnetKey = parseScopeSubnetKey(node.hints?.topology?.scopeId);
+    if (!scopedSubnetKey) {
+      return nodeId;
+    }
+
+    if (scopedSubnetKey === subnetKey) {
+      return nodeId;
+    }
+
+    const replicaNodeId = buildReplicaNodeId(nodeId, subnetKey);
+    return graph.getNodeAttributes(replicaNodeId) ? replicaNodeId : undefined;
   }
 }
 

@@ -1455,13 +1455,16 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
         }),
       }),
     );
+    const subnetGroupReplicaId = asNodeId(`${String(subnetGroupId)}:replica:subnet:subnet-b`);
     expect(
       withEnricher
         .outEdges(replicaId)
-        .some((edgeId) => withEnricher.edgeTarget(edgeId) === subnetGroupId),
+        .some((edgeId) => withEnricher.edgeTarget(edgeId) === subnetGroupReplicaId),
     ).toBe(true);
     expect(
-      withEnricher.inEdges(replicaId).some((edgeId) => withEnricher.edgeSource(edgeId) === appId),
+      withEnricher
+        .inEdges(replicaId)
+        .some((edgeId) => withEnricher.edgeSource(edgeId) === appId),
     ).toBe(true);
   });
 
@@ -1570,20 +1573,26 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
 
     const replicaId = asNodeId(`${String(subnetGroupId)}:replica:subnet:subnet-b`);
+    const appReplicaId = asNodeId(`${String(appId)}:replica:subnet:subnet-b`);
     expect(updated.getNodeAttributes(replicaId)?.id).toBe(replicaId);
     expect(updated.getNodeAttributes(replicaId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
     );
-    expect(updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === appId)).toBe(
+    expect(updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === appReplicaId)).toBe(
       true,
     );
+    const replicaTargets = updated
+      .outEdges(replicaId)
+      .map((edgeId) => updated.edgeTarget(edgeId));
+    expect(replicaTargets).not.toContain(subnetAId);
+    expect(replicaTargets).not.toContain(subnetBId);
+    expect(replicaTargets.length).toBeGreaterThan(0);
     expect(
-      updated
-        .outEdges(replicaId)
-        .some(
-          (edgeId) =>
-            updated.edgeTarget(edgeId) === subnetAId || updated.edgeTarget(edgeId) === subnetBId,
-        ),
+      replicaTargets.every(
+        (targetId) =>
+          updated.getNodeAttributes(targetId)?.hints?.topology?.scopeId ===
+          'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+      ),
     ).toBe(true);
     expect(updated.outEdges(subnetGroupId).some((edgeId) => updated.edgeTarget(edgeId) === replicaId)).toBe(false);
     expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetGroupId)).toBe(false);
@@ -3139,12 +3148,377 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(
       false,
     );
-    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetAId)).toBe(
-      true,
-    );
     expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetBId)).toBe(
       true,
     );
+    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetAId)).toBe(
+      false,
+    );
+  });
+
+  it('shoud remap cloned edges to same-subnet replicas instead of leaving cross-subnet links', () => {
+    const [rule] = buildRules({ enrichers: ['network'] }, 'normalize');
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.public_a');
+    const subnetBId = asNodeId('resource.aws_subnet.public_b');
+    const sgId = asNodeId('resource.aws_security_group.alb');
+    const lbId = asNodeId('resource.aws_lb.this');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_a',
+            resource: 'aws_subnet',
+            name: 'public_a',
+            state: buildTerraformState('aws_subnet.public_a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_b',
+            resource: 'aws_subnet',
+            name: 'public_b',
+            state: buildTerraformState('aws_subnet.public_b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [sgId]: {
+          id: sgId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.alb',
+            resource: 'aws_security_group',
+            name: 'alb',
+            state: buildTerraformState('aws_security_group.alb', {
+              vpc_id: 'vpc-1',
+            }),
+          },
+        },
+        [lbId]: {
+          id: lbId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.this',
+            resource: 'aws_lb',
+            name: 'this',
+            state: buildTerraformState('aws_lb.this', {
+              subnet_ids: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-sg-subnet-a'),
+          from: sgId,
+          to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-sg-subnet-b'),
+          from: sgId,
+          to: subnetBId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-sg-lb'),
+          from: sgId,
+          to: lbId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const sgReplicaId = asNodeId(`${String(sgId)}:replica:subnet:subnet-b`);
+    const lbReplicaId = asNodeId(`${String(lbId)}:replica:subnet:subnet-b`);
+
+    expect(updated.getNodeAttributes(sgId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+    expect(updated.getNodeAttributes(lbId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2a:subnet:subnet-a',
+    );
+    expect(updated.getNodeAttributes(sgReplicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+    expect(updated.getNodeAttributes(lbReplicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+
+    expect(updated.outEdges(sgId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(true);
+    expect(updated.outEdges(sgId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId)).toBe(
+      false,
+    );
+    expect(updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(
+      false,
+    );
+    expect(updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId)).toBe(
+      true,
+    );
+  });
+
+  it('shoud skip replaying stale replica endpoints that belong to a different subnet on reruns', () => {
+    const [rule] = buildRules({ enrichers: ['network'] }, 'normalize');
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.public_a');
+    const subnetBId = asNodeId('resource.aws_subnet.public_b');
+    const lbId = asNodeId('resource.aws_lb.this');
+    const staleReplicaSourceId = asNodeId('resource.aws_security_group.alb:replica:subnet:subnet-c');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_a',
+            resource: 'aws_subnet',
+            name: 'public_a',
+            state: buildTerraformState('aws_subnet.public_a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_b',
+            resource: 'aws_subnet',
+            name: 'public_b',
+            state: buildTerraformState('aws_subnet.public_b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [lbId]: {
+          id: lbId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.this',
+            resource: 'aws_lb',
+            name: 'this',
+            state: buildTerraformState('aws_lb.this', {
+              subnet_ids: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+        [staleReplicaSourceId]: {
+          id: staleReplicaSourceId,
+          hints: {
+            topology: {
+              scopeId: 'vpc:vpc-1:az:eu-west-2c:subnet:subnet-c',
+            },
+          },
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.alb',
+            resource: 'aws_security_group',
+            name: 'alb',
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-lb-subnet-a'),
+          from: lbId,
+          to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-lb-subnet-b'),
+          from: lbId,
+          to: subnetBId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-stale-replica-to-lb'),
+          from: staleReplicaSourceId,
+          to: lbId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const lbReplicaId = asNodeId(`${String(lbId)}:replica:subnet:subnet-b`);
+
+    expect(updated.getNodeAttributes(lbReplicaId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+    );
+    expect(
+      updated
+        .inEdges(lbReplicaId)
+        .some((edgeId) => updated.edgeSource(edgeId) === staleReplicaSourceId),
+    ).toBe(false);
+  });
+
+  it('shoud preserve replay edges from existing same-subnet replicas on reruns', () => {
+    const [rule] = buildRules({ enrichers: ['network'] }, 'normalize');
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.main');
+    const subnetAId = asNodeId('resource.aws_subnet.public_a');
+    const subnetBId = asNodeId('resource.aws_subnet.public_b');
+    const lbId = asNodeId('resource.aws_lb.this');
+    const existingReplicaSourceId = asNodeId('resource.aws_security_group.alb:replica:subnet:subnet-b');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.main',
+            resource: 'aws_vpc',
+            name: 'main',
+            state: buildTerraformState('aws_vpc.main', {
+              id: 'vpc-1',
+            }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_a',
+            resource: 'aws_subnet',
+            name: 'public_a',
+            state: buildTerraformState('aws_subnet.public_a', {
+              id: 'subnet-a',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_b',
+            resource: 'aws_subnet',
+            name: 'public_b',
+            state: buildTerraformState('aws_subnet.public_b', {
+              id: 'subnet-b',
+              vpc_id: 'vpc-1',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [lbId]: {
+          id: lbId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.this',
+            resource: 'aws_lb',
+            name: 'this',
+            state: buildTerraformState('aws_lb.this', {
+              subnet_ids: ['subnet-a', 'subnet-b'],
+            }),
+          },
+        },
+        [existingReplicaSourceId]: {
+          id: existingReplicaSourceId,
+          hints: {
+            topology: {
+              scopeId: 'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
+            },
+          },
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.alb',
+            resource: 'aws_security_group',
+            name: 'alb',
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-lb-subnet-a'),
+          from: lbId,
+          to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-lb-subnet-b'),
+          from: lbId,
+          to: subnetBId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-existing-replica-to-lb'),
+          from: existingReplicaSourceId,
+          to: lbId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+    const lbReplicaId = asNodeId(`${String(lbId)}:replica:subnet:subnet-b`);
+
+    expect(
+      updated
+        .inEdges(lbReplicaId)
+        .some((edgeId) => updated.edgeSource(edgeId) === existingReplicaSourceId),
+    ).toBe(true);
   });
 
   it('shoud infer and place direct vpc references without explicit vpc resource nodes', () => {
