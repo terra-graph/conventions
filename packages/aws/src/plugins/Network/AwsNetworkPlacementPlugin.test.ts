@@ -149,7 +149,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
   it('shoud normalize supported enricher ids deterministically', () => {
     const [rule] = buildRules(
       {
-        enrichers: ['efs', 'network', 'efs', 'network', 'unknown'],
+        enrichers: ['network', 'ecs', 'efs', 'network', 'ecs', 'unknown'],
       },
       'normalize',
     );
@@ -161,7 +161,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
           any: true,
         },
         options: {
-          enrichers: ['efs', 'network'],
+          enrichers: ['ecs', 'efs', 'network'],
           mode: 'full',
         },
       },
@@ -851,7 +851,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud infer module-local subnet topology without forcing unreferenced resources into vpc scope', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1599,7 +1599,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud tolerate missing node lookups and preserve idempotence on reruns', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1682,7 +1682,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud tolerate missing neighbor node lookups while applying rds enrichment', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1726,7 +1726,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud infer subnet keys from rds subnet-group state even when subnet nodes are absent', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -1995,7 +1995,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
   });
 
   it('shoud enrich and clone elasticache replication-group and cluster across subnets', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2132,8 +2132,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     ).toBe('vpc:vpc-cache:az:eu-west-2b:subnet:subnet-cache-b');
   });
 
-  it('shoud enrich and clone ecs services from network configuration with edge fallback', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+  it('shoud enrich and clone ecs services from network configuration or subnet edges when task definitions use awsvpc', () => {
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2141,9 +2141,12 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const vpcId = asNodeId('resource.aws_vpc.ecs');
     const subnetAId = asNodeId('resource.aws_subnet.ecs_a');
     const subnetBId = asNodeId('resource.aws_subnet.ecs_b');
+    const taskDefinitionId = asNodeId('resource.aws_ecs_task_definition.app');
     const serviceObjectId = asNodeId('resource.aws_ecs_service.object');
     const serviceArrayId = asNodeId('resource.aws_ecs_service.array');
     const serviceFallbackId = asNodeId('resource.aws_ecs_service.fallback');
+    const serviceBridgeId = asNodeId('resource.aws_ecs_service.bridge');
+    const taskDefinitionBridgeId = asNodeId('resource.aws_ecs_task_definition.bridge');
     const malformedReplicaId = asNodeId('resource.aws_iam_role.bad:replica:subnet:');
 
     const adapter = buildAdapter({
@@ -2188,6 +2191,21 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             }),
           },
         },
+        [taskDefinitionId]: {
+          id: taskDefinitionId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_ecs_task_definition.app',
+            resource: 'aws_ecs_task_definition',
+            name: 'app',
+            state: buildTerraformState('aws_ecs_task_definition.app', {
+              arn: 'arn:aws:ecs:eu-west-2:123456789012:task-definition/app:1',
+              family: 'app',
+              revision: 1,
+              network_mode: 'awsvpc',
+            }),
+          },
+        },
         [serviceObjectId]: {
           id: serviceObjectId,
           terraform: {
@@ -2196,6 +2214,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             resource: 'aws_ecs_service',
             name: 'object',
             state: buildTerraformState('aws_ecs_service.object', {
+              task_definition: 'arn:aws:ecs:eu-west-2:123456789012:task-definition/app:1',
               network_configuration: {
                 subnets: ['subnet-ecs-a', 'subnet-ecs-b'],
               },
@@ -2210,6 +2229,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             resource: 'aws_ecs_service',
             name: 'array',
             state: buildTerraformState('aws_ecs_service.array', {
+              task_definition: 'app:1',
               network_configuration: [
                 {
                   subnet_ids: ['subnet-ecs-a', 'subnet-ecs-b'],
@@ -2226,7 +2246,39 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             address: 'aws_ecs_service.fallback',
             resource: 'aws_ecs_service',
             name: 'fallback',
-            state: buildTerraformState('aws_ecs_service.fallback', {}),
+            state: buildTerraformState('aws_ecs_service.fallback', {
+              task_definition: 'app:1',
+            }),
+          },
+        },
+        [taskDefinitionBridgeId]: {
+          id: taskDefinitionBridgeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_ecs_task_definition.bridge',
+            resource: 'aws_ecs_task_definition',
+            name: 'bridge',
+            state: buildTerraformState('aws_ecs_task_definition.bridge', {
+              arn: 'arn:aws:ecs:eu-west-2:123456789012:task-definition/bridge:1',
+              family: 'bridge',
+              revision: 1,
+              network_mode: 'bridge',
+            }),
+          },
+        },
+        [serviceBridgeId]: {
+          id: serviceBridgeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_ecs_service.bridge',
+            resource: 'aws_ecs_service',
+            name: 'bridge',
+            state: buildTerraformState('aws_ecs_service.bridge', {
+              task_definition: 'bridge:1',
+              network_configuration: {
+                subnet_ids: ['subnet-ecs-a', 'subnet-ecs-b'],
+              },
+            }),
           },
         },
         [malformedReplicaId]: {
@@ -2244,6 +2296,30 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
           id: asEdgeId('edge-ecs-fallback-subnet'),
           from: serviceFallbackId,
           to: subnetAId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-ecs-service-task-definition'),
+          from: serviceObjectId,
+          to: taskDefinitionId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-ecs-array-task-definition'),
+          from: serviceArrayId,
+          to: taskDefinitionId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-ecs-fallback-task-definition'),
+          from: serviceFallbackId,
+          to: taskDefinitionId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-ecs-bridge-task-definition'),
+          from: serviceBridgeId,
+          to: taskDefinitionBridgeId,
           attributes: {},
         },
       ],
@@ -2270,11 +2346,20 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(serviceFallbackId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-ecs-a',
     );
+    expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-ecs-a',
+    );
+    expect(
+      updated.getNodeAttributes(asNodeId(`${String(taskDefinitionId)}:replica:subnet:subnet-ecs-b`))
+        ?.hints?.topology?.scopeId,
+    ).toBe('vpc:vpc-ecs:az:eu-west-2b:subnet:subnet-ecs-b');
+    expect(updated.getNodeAttributes(serviceBridgeId)?.hints?.topology).toBeUndefined();
     expect(updated.getNodeAttributes(malformedReplicaId)?.hints?.topology).toBeUndefined();
+    expect(updated.getNodeAttributes(taskDefinitionBridgeId)?.hints?.topology).toBeUndefined();
   });
 
-  it('shoud scope ecs services/task sets but keep ecs cluster and task definition unscoped', () => {
-    const [rule] = buildRules({ enrichers: ['network'] });
+  it('shoud scope ecs services/task sets/task definitions but keep ecs cluster unscoped', () => {
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
     if (!rule) {
       throw new Error('Expected placement rule');
     }
@@ -2350,6 +2435,8 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
             name: 'main',
             state: buildTerraformState('aws_ecs_task_definition.main', {
               family: 'main',
+              revision: 1,
+              network_mode: 'awsvpc',
             }),
           },
         },
@@ -2427,7 +2514,167 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     ).toBe('vpc:vpc-ecs:az:eu-west-2b:subnet:subnet-ecs-b');
 
     expect(updated.getNodeAttributes(clusterId)?.hints?.topology).toBeUndefined();
-    expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology).toBeUndefined();
+    expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-ecs-a',
+    );
+    expect(
+      updated.getNodeAttributes(asNodeId(`${String(taskDefinitionId)}:replica:subnet:subnet-ecs-b`))
+        ?.hints?.topology?.scopeId,
+    ).toBe('vpc:vpc-ecs:az:eu-west-2b:subnet:subnet-ecs-b');
+  });
+
+  it('shoud reconcile ecs service and task definition placement from already-planned network neighbors', () => {
+    const [rule] = buildRules({ enrichers: ['ecs', 'network'] });
+    if (!rule) {
+      throw new Error('Expected placement rule');
+    }
+
+    const vpcId = asNodeId('resource.aws_vpc.ecs');
+    const subnetAId = asNodeId('resource.aws_subnet.public_a');
+    const subnetBId = asNodeId('resource.aws_subnet.public_b');
+    const loadBalancerId = asNodeId('resource.aws_lb.this');
+    const securityGroupId = asNodeId('resource.aws_security_group.service');
+    const taskDefinitionId = asNodeId('resource.aws_ecs_task_definition.app');
+    const serviceId = asNodeId('resource.aws_ecs_service.app');
+
+    const adapter = buildAdapter({
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [vpcId]: {
+          id: vpcId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_vpc.ecs',
+            resource: 'aws_vpc',
+            name: 'ecs',
+            state: buildTerraformState('aws_vpc.ecs', { id: 'vpc-ecs' }),
+          },
+        },
+        [subnetAId]: {
+          id: subnetAId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_a',
+            resource: 'aws_subnet',
+            name: 'public_a',
+            state: buildTerraformState('aws_subnet.public_a', {
+              id: 'subnet-public-a',
+              vpc_id: 'vpc-ecs',
+              availability_zone: 'eu-west-2a',
+            }),
+          },
+        },
+        [subnetBId]: {
+          id: subnetBId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_subnet.public_b',
+            resource: 'aws_subnet',
+            name: 'public_b',
+            state: buildTerraformState('aws_subnet.public_b', {
+              id: 'subnet-public-b',
+              vpc_id: 'vpc-ecs',
+              availability_zone: 'eu-west-2b',
+            }),
+          },
+        },
+        [loadBalancerId]: {
+          id: loadBalancerId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lb.this',
+            resource: 'aws_lb',
+            name: 'this',
+            state: buildTerraformState('aws_lb.this', {
+              subnet_ids: ['subnet-public-a', 'subnet-public-b'],
+            }),
+          },
+        },
+        [securityGroupId]: {
+          id: securityGroupId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_security_group.service',
+            resource: 'aws_security_group',
+            name: 'service',
+            state: buildTerraformState('aws_security_group.service', {
+              vpc_id: 'vpc-ecs',
+            }),
+          },
+        },
+        [taskDefinitionId]: {
+          id: taskDefinitionId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_ecs_task_definition.app',
+            resource: 'aws_ecs_task_definition',
+            name: 'app',
+            state: buildTerraformState('aws_ecs_task_definition.app', {
+              family: 'app',
+              revision: 1,
+              network_mode: 'awsvpc',
+            }),
+          },
+        },
+        [serviceId]: {
+          id: serviceId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_ecs_service.app',
+            resource: 'aws_ecs_service',
+            name: 'app',
+            state: buildTerraformState('aws_ecs_service.app', {
+              task_definition: 'app:1',
+              network_configuration: {
+                assign_public_ip: true,
+              },
+            }),
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('edge-service-task-definition'),
+          from: serviceId,
+          to: taskDefinitionId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-service-security-group'),
+          from: serviceId,
+          to: securityGroupId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-security-group-load-balancer'),
+          from: securityGroupId,
+          to: loadBalancerId,
+          attributes: {},
+        },
+      ],
+    });
+
+    const updated = applyRuleAcrossNodes(rule, adapter);
+
+    expect(updated.getNodeAttributes(securityGroupId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-public-a',
+    );
+    expect(updated.getNodeAttributes(serviceId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-public-a',
+    );
+    expect(
+      updated.getNodeAttributes(asNodeId(`${String(serviceId)}:replica:subnet:subnet-public-b`))
+        ?.hints?.topology?.scopeId,
+    ).toBe('vpc:vpc-ecs:az:eu-west-2b:subnet:subnet-public-b');
+    expect(updated.getNodeAttributes(taskDefinitionId)?.hints?.topology?.scopeId).toBe(
+      'vpc:vpc-ecs:az:eu-west-2a:subnet:subnet-public-a',
+    );
+    expect(
+      updated.getNodeAttributes(
+        asNodeId(`${String(taskDefinitionId)}:replica:subnet:subnet-public-b`),
+      )?.hints?.topology?.scopeId,
+    ).toBe('vpc:vpc-ecs:az:eu-west-2b:subnet:subnet-public-b');
   });
 
   it('shoud keep ec2 control-plane resources unscoped when subnet context is absent', () => {

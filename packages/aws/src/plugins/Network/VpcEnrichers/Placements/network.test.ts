@@ -80,6 +80,7 @@ describe('NetworkPlacementEnricher', () => {
       subnetKeys,
       vpcKeys,
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(vpcKeys).toStrictEqual(new Set<string>(['vpc-explicit', 'vpc-neighbor']));
@@ -89,5 +90,75 @@ describe('NetworkPlacementEnricher', () => {
       label: 'vpc-explicit',
     });
     expect(context.vpcIdentifierToKey.get('vpc-explicit')).toBe('vpc-explicit');
+  });
+
+  it('shoud place load balancer target groups from neighboring subnet-scoped resources', () => {
+    const targetGroupId = asNodeId('resource.aws_lb_target_group.app');
+    const listenerId = asNodeId('resource.aws_lb_listener.http');
+    const subnetAId = asNodeId('resource.aws_subnet.public_a');
+    const subnetBId = asNodeId('resource.aws_subnet.public_b');
+
+    const graph = {
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId === listenerId) {
+          return {
+            terraform: {
+              resource: 'aws_lb_listener',
+              state: {
+                effective: {
+                  values: {},
+                },
+              },
+            },
+          } as TgNodeAttributes;
+        }
+
+        if (nodeId === subnetAId || nodeId === subnetBId) {
+          return {
+            terraform: {
+              resource: 'aws_subnet',
+              state: {
+                effective: {
+                  values: {},
+                },
+              },
+            },
+          } as TgNodeAttributes;
+        }
+
+        return undefined;
+      },
+      predecessors: (nodeId: string) => (nodeId === targetGroupId ? [listenerId] : []),
+      successors: (nodeId: string) => {
+        if (nodeId === listenerId) {
+          return [targetGroupId, subnetAId, subnetBId];
+        }
+
+        return [];
+      },
+    } as unknown as AdapterOperations;
+
+    const context = buildContext(graph);
+    context.subnetNodeToKey.set(String(subnetAId), 'subnet-a');
+    context.subnetNodeToKey.set(String(subnetBId), 'subnet-b');
+
+    const subnetKeys = new Set<string>();
+
+    NetworkPlacementEnricher.apply({
+      nodeId: targetGroupId,
+      node: {
+        terraform: {
+          resource: 'aws_lb_target_group',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: undefined,
+      controls: {},
+    });
+
+    expect(subnetKeys).toStrictEqual(new Set<string>(['subnet-a', 'subnet-b']));
   });
 });

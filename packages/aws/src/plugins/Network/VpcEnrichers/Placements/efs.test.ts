@@ -172,6 +172,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: mountSubnetKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(mountSubnetKeys).toStrictEqual(new Set<string>(['subnet-a']));
@@ -189,6 +190,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: mountNoSubnetKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(mountNoSubnetKeys.size).toBe(0);
@@ -208,6 +210,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: fileSystemSubnetKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(fileSystemSubnetKeys).toStrictEqual(new Set<string>(['subnet-a', 'subnet-b']));
@@ -227,6 +230,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: accessPointSubnetKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(accessPointSubnetKeys).toStrictEqual(new Set<string>(['subnet-a', 'subnet-b']));
@@ -246,6 +250,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: unresolvedSubnetKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(unresolvedSubnetKeys.size).toBe(0);
@@ -263,6 +268,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: missingFsIdKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(missingFsIdKeys.size).toBe(0);
@@ -280,6 +286,7 @@ describe('EfsPlacementEnricher', () => {
       subnetKeys: ignoredResourceKeys,
       vpcKeys: new Set<string>(),
       explicitVpcId: undefined,
+      controls: {},
     });
 
     expect(ignoredResourceKeys.size).toBe(0);

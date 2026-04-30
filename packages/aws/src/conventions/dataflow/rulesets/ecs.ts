@@ -1,8 +1,27 @@
-import { EdgeDirectionSemantic, RuleSet } from '@terra-graph/core';
+import { EdgeDirectionSemantic, RemoveNode, RuleSet } from '@terra-graph/core';
 import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
 
 export const ecsSemanticsRuleSet = new RuleSet({
   rules: [
+    new EdgeDirectionSemantic({
+      edge: {
+        from: {
+          attr: {
+            key: 'terraform.resource',
+            in: ['aws_ecs_service'],
+          },
+        },
+        to: {
+          attr: {
+            key: 'terraform.resource',
+            in: ['aws_ecs_task_definition'],
+          },
+        },
+      },
+      options: {
+        semantic: AwsEdgeDirectionSemantics.Invokes,
+      },
+    }),
     new EdgeDirectionSemantic({
       edge: {
         from: {
@@ -55,6 +74,19 @@ export const ecsSemanticsRuleSet = new RuleSet({
       options: {
         semantic: AwsEdgeDirectionSemantics.Accesses,
         enforceDirection: true,
+      },
+    }),
+  ],
+});
+
+export const ecsCleanupRuleSet = new RuleSet({
+  rules: [
+    new RemoveNode({
+      node: {
+        attr: {
+          key: 'terraform.resource',
+          eq: 'aws_ecs_cluster',
+        },
       },
     }),
   ],

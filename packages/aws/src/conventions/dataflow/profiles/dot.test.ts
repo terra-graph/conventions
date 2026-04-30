@@ -98,6 +98,7 @@ describe('dataflow dot profile', () => {
       'semantics',
       'main',
       'cleanup',
+      'cleanup',
     ]);
     expect(baseProfile?.plugins).toEqual([
       { plugin: S3Plugin.id },
@@ -109,7 +110,7 @@ describe('dataflow dot profile', () => {
         plugin: AwsNetworkPlacementPlugin.id,
         slot: 'topology-placement',
         options: {
-          enrichers: ['efs', 'network'],
+          enrichers: ['ecs', 'efs', 'network'],
         },
       },
       {

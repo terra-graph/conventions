@@ -26,6 +26,7 @@ const EGRESS_ONLY_INTERNET_GATEWAY_RESOURCE = 'aws_egress_only_internet_gateway'
 const VPC_ENDPOINT_RESOURCE = 'aws_vpc_endpoint';
 const LOAD_BALANCER_RESOURCE = 'aws_lb';
 const LOAD_BALANCER_LISTENER_RESOURCE = 'aws_lb_listener';
+const LOAD_BALANCER_TARGET_GROUP_RESOURCE = 'aws_lb_target_group';
 
 const GROUP_KIND_SECURITY_GROUP = 'network.security_group';
 const GROUP_KIND_ROUTE_TABLE = 'network.route_table';
@@ -61,6 +62,7 @@ const NETWORK_PLACEMENT_RESOURCES = new Set<string>([
   EGRESS_ONLY_INTERNET_GATEWAY_RESOURCE,
   VPC_ENDPOINT_RESOURCE,
   LOAD_BALANCER_LISTENER_RESOURCE,
+  LOAD_BALANCER_TARGET_GROUP_RESOURCE,
 ]);
 
 const ensureVpcKeyFromIdentifier = (

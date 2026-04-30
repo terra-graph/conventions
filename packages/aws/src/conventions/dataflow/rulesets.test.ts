@@ -144,6 +144,89 @@ describe('dataflow convention rule sets', () => {
     );
   });
 
+  it('shoud include alb cleanup rules for listeners and target groups', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const serializedRules = phases[0].map((rule) => rule.serialize());
+
+    expect(serializedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'RemoveNodeAndReconnectEdges',
+          config: expect.objectContaining({
+            node: expect.objectContaining({
+              attr: expect.objectContaining({
+                key: 'terraform.resource',
+                eq: 'aws_lb_listener',
+              }),
+            }),
+          }),
+        }),
+        expect.objectContaining({
+          id: 'RemoveNodeAndReconnectEdges',
+          config: expect.objectContaining({
+            node: expect.objectContaining({
+              attr: expect.objectContaining({
+                key: 'terraform.resource',
+                eq: 'aws_lb_target_group',
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('shoud include ec2 cleanup rules for launch templates', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const serializedRules = phases[0].map((rule) => rule.serialize());
+
+    expect(serializedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'RemoveNode',
+          config: expect.objectContaining({
+            node: expect.objectContaining({
+              attr: expect.objectContaining({
+                key: 'terraform.resource',
+                eq: 'aws_launch_template',
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('shoud include ecs cleanup rules for cluster control plane nodes', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const serializedRules = phases[0].map((rule) => rule.serialize());
+
+    expect(serializedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'RemoveNode',
+          config: expect.objectContaining({
+            node: expect.objectContaining({
+              attr: expect.objectContaining({
+                key: 'terraform.resource',
+                eq: 'aws_ecs_cluster',
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
   it('shoud enforce direction for IAM authorizes semantics', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
       conventionName(Convention.DataFlow, ruleSetName('semantics')),
@@ -184,6 +267,20 @@ describe('dataflow convention rule sets', () => {
       default: { resolvePhases: () => [] },
       lambdaPreRuleSet: { resolvePhases: () => [] },
     }));
+    jest.doMock('./rulesets/alb.js', () => ({
+      __esModule: true,
+      default: { resolvePhases: () => [] },
+      albCleanupRuleSet: { resolvePhases: () => [] },
+    }));
+    jest.doMock('./rulesets/ec2.js', () => ({
+      __esModule: true,
+      default: { resolvePhases: () => [] },
+    }));
+    jest.doMock('./rulesets/ecs.js', () => ({
+      __esModule: true,
+      default: { resolvePhases: () => [] },
+      ecsCleanupRuleSet: { resolvePhases: () => [] },
+    }));
     jest.doMock('./rulesets/iam.js', () => ({
       __esModule: true,
       default: { resolvePhases: () => [] },
@@ -202,11 +299,18 @@ describe('dataflow convention rule sets', () => {
       const semantics = reloadedRuleSets
         .resolve(conventionName(Convention.DataFlow, ruleSetName('semantics')))
         .resolvePhases(dataFlowConventionRules);
+      const cleanup = reloadedRuleSets
+        .resolve(conventionName(Convention.DataFlow, ruleSetName('cleanup')))
+        .resolvePhases(dataFlowConventionRules);
 
       expect(pre).toHaveLength(1);
       expect(semantics).toHaveLength(1);
+      expect(cleanup).toHaveLength(1);
     } finally {
       jest.dontMock('./rulesets/lambda.js');
+      jest.dontMock('./rulesets/alb.js');
+      jest.dontMock('./rulesets/ec2.js');
+      jest.dontMock('./rulesets/ecs.js');
       jest.dontMock('./rulesets/iam.js');
       jest.resetModules();
     }

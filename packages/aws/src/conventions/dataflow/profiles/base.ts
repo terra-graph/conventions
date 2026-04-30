@@ -68,12 +68,17 @@ export default new Profile(conventionDataFlowBaseProfileName, {
     {
       phase: 'cleanup',
       rules: [
-        // Semantics used to be re-run here when network placement/cloning happened later.
-        // Network topology + placement now run in `normalize`, so semantics should already
-        // have seen the normalized graph before `main`. Keep this commented until we confirm
-        // there was no other historical reason for the second pass.
-        // { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
         { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('cleanup')) },
+      ],
+    },
+    {
+      phase: 'cleanup',
+      rules: [
+        // Re-run semantics in a separate later cleanup phase because cleanup rules can create
+        // redirected edges (for example ALB -> ECS after listener/target-group removal). A
+        // single resolver phase only visits the node ids captured at phase start, so this must
+        // be its own phase step rather than another ruleset entry in the same cleanup step.
+        { namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')) },
       ],
     },
   ],
@@ -87,7 +92,7 @@ export default new Profile(conventionDataFlowBaseProfileName, {
       plugin: AwsNetworkPlacementPlugin.id,
       slot: 'topology-placement',
       options: {
-        enrichers: ['efs', 'network'],
+        enrichers: ['ecs', 'efs', 'network'],
       },
     },
     {

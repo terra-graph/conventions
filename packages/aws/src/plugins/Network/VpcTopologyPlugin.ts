@@ -4,10 +4,10 @@ import {
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
   type NodeId,
-  type TgTopologyScope,
   NodeRule,
   type TgGraphHints,
   type TgNodeAttributes,
+  type TgTopologyScope,
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
 import {
@@ -301,6 +301,9 @@ class ApplyVpcTopologyHints extends NodeRule {
         // biome-ignore lint/style/noNonNullAssertion: key exists in this loop
         label: vpcs.get(vpcKey)!.label,
         order: order++,
+        layout: {
+          direction: 'horizontal',
+        } as TgTopologyScope['layout'],
       };
 
       const vpcSubnets = [...subnets.values()]
@@ -319,10 +322,11 @@ class ApplyVpcTopologyHints extends NodeRule {
           label: az,
           order: order++,
           layout: {
+            direction: 'vertical',
             mode: 'symmetric',
             groupId: buildVpcAzLaneGroupId(vpcKey),
             laneKey: az,
-          },
+          } as TgTopologyScope['layout'],
         };
 
         const azSubnets = vpcSubnets

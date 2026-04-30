@@ -206,6 +206,7 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     expect(scopes['vpc:vpc-1:az:eu-west-2b:subnet:subnet-2']).toBeDefined();
     expect(scopes['vpc:vpc-1:az:eu-west-2a']).toMatchObject({
       layout: {
+        direction: 'vertical',
         mode: 'symmetric',
         groupId: 'vpc:vpc-1:az-lanes',
         laneKey: 'eu-west-2a',
@@ -213,9 +214,15 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     });
     expect(scopes['vpc:vpc-1:az:eu-west-2b']).toMatchObject({
       layout: {
+        direction: 'vertical',
         mode: 'symmetric',
         groupId: 'vpc:vpc-1:az-lanes',
         laneKey: 'eu-west-2b',
+      },
+    });
+    expect(scopes['vpc:vpc-1']).toMatchObject({
+      layout: {
+        direction: 'horizontal',
       },
     });
     expect(scopes['vpc:vpc-1:az:eu-west-2a:subnet:subnet-1']).toMatchObject({
@@ -1096,9 +1103,7 @@ describe('VpcTopologyPlugin.ApplyVpcTopologyHints', () => {
     ).hints?.topology?.scopes;
 
     expect(scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`]).toBeDefined();
-    expect(
-      scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`],
-    ).toMatchObject({
+    expect(scopes?.[`vpc:vpc-singleton:az:unknown:subnet:${String(subnetId)}`]).toMatchObject({
       layout: {
         slotKey: String(subnetId),
       },

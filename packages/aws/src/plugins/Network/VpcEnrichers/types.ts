@@ -1,6 +1,6 @@
 import type { AdapterOperations, NodeId, TgNodeAttributes } from '@terra-graph/core';
 
-export type AwsNetworkPlacementEnricherId = 'efs' | 'network';
+export type AwsNetworkPlacementEnricherId = 'ecs' | 'efs' | 'network';
 export type AwsNetworkVisibilityMode = 'full' | 'architecture' | 'minimal';
 
 export type AwsNetworkPlacementPluginOptions = {
@@ -53,6 +53,13 @@ export type EnricherApplyInput = {
   subnetKeys: Set<string>;
   vpcKeys: Set<string>;
   explicitVpcId?: string;
+  controls: {
+    suppressPlacement?: boolean;
+  };
+};
+
+export type EnricherReconcileInput = EnricherApplyInput & {
+  plannedSubnetKeysByNodeId: ReadonlyMap<NodeId, readonly string[]>;
 };
 
 export type PlacementEnricher = {
@@ -60,4 +67,5 @@ export type PlacementEnricher = {
   resources: ReadonlySet<string>;
   indexNode?: (input: EnricherIndexInput) => void;
   apply: (input: EnricherApplyInput) => void;
+  reconcilePlacement?: (input: EnricherReconcileInput) => void;
 };

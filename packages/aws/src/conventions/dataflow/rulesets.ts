@@ -2,12 +2,14 @@ import { NamedRuleSetRegistry, RemoveNode, RuleSet } from '@terra-graph/core';
 import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
 import acmSemanticsRuleSet from './rulesets/acm.js';
+import albSemanticsRuleSet, { albCleanupRuleSet } from './rulesets/alb.js';
 import apiGatewaySemanticsRuleSet from './rulesets/apigateway.js';
 import athenaSemanticsRuleSet from './rulesets/athena.js';
 import cloudFrontSemanticsRuleSet from './rulesets/cloudfront.js';
 import cloudwatchSemanticsRuleSet, { cloudwatchPreRuleSet } from './rulesets/cloudwatch.js';
 import dynamodbSemanticsRuleSet from './rulesets/dynamodb.js';
-import ecsSemanticsRuleSet from './rulesets/ecs.js';
+import ec2CleanupRuleSet from './rulesets/ec2.js';
+import ecsSemanticsRuleSet, { ecsCleanupRuleSet } from './rulesets/ecs.js';
 import eventBridgeSemanticsRuleSet from './rulesets/eventbridge.js';
 import glueSemanticsRuleSet from './rulesets/glue.js';
 import iamSemanticsRuleSet from './rulesets/iam.js';
@@ -49,6 +51,7 @@ export default new NamedRuleSetRegistry({
       sqsSemanticsRuleSet,
       snsSemanticsRuleSet,
       kinesisSemanticsRuleSet,
+      albSemanticsRuleSet,
       apiGatewaySemanticsRuleSet,
       glueSemanticsRuleSet,
       timestreamSemanticsRuleSet,
@@ -61,6 +64,9 @@ export default new NamedRuleSetRegistry({
   [conventionName(Convention.DataFlow, ruleSetName('main'))]: new RuleSet(),
   [conventionName(Convention.DataFlow, ruleSetName('cleanup'))]: new RuleSet({
     rules: [
+      ...(albCleanupRuleSet.resolvePhases()[0] ?? []),
+      ...(ec2CleanupRuleSet.resolvePhases()[0] ?? []),
+      ...(ecsCleanupRuleSet.resolvePhases()[0] ?? []),
       new RemoveNode({
         node: {
           and: [

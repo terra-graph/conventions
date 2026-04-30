@@ -1,6 +1,11 @@
 import { DotAdapter, Profile } from '@terra-graph/core';
 import type { DotRendererOptions } from '@terra-graph/core';
-import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
+import {
+  conventionName,
+  profileName,
+  ruleName,
+  ruleSetName,
+} from '../../../namespaces.js';
 import { Convention } from '../../index.js';
 import base from './base.js';
 
@@ -14,7 +19,7 @@ const baseDotProfile = new Profile<DotRendererOptions>('overview.dot', {
   render: {
     options: {
       graph: {
-        rankdir: 'LR',
+        rankdir: 'TB',
         ranksep: 2.5,
         nodesep: 0.6,
         pad: 1,

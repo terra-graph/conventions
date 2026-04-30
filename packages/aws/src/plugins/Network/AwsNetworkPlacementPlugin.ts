@@ -75,6 +75,23 @@ type NodeTopologyPlacement = {
   slotOrder?: number;
 };
 
+type PlacementResolutionState = {
+  node: TgNodeAttributes;
+  values: Record<string, unknown>;
+  resource?: string;
+  explicitVpcId?: string;
+  explicitVpcKeys: Set<string>;
+  subnetKeys: Set<string>;
+  vpcKeys: Set<string>;
+  matchingEnrichers: PlacementEnricher[];
+  controls: {
+    suppressPlacement?: boolean;
+  };
+  referencedVpcIds: string[];
+  referencedSubnetIds: string[];
+  referencedSubnetGroupIds: string[];
+};
+
 const buildVpcScopeId = (vpcKey: string): string => `vpc:${vpcKey}`;
 const buildVpcAzScopeId = (vpcKey: string, az: string): string =>
   `${buildVpcScopeId(vpcKey)}:az:${az}`;
@@ -186,221 +203,384 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         continue;
       }
 
-      const node = graph.getNodeAttributes(currentNodeId);
-      if (!node) {
+      const resolution = this.initializePlacementResolution(
+        currentNodeId,
+        graph,
+        context,
+        enabledEnrichers,
+      );
+      if (!resolution) {
         continue;
       }
 
-      const values = readStateValues(node);
-      const referencedVpcIds = resolveReferencedVpcIds(values);
-      const referencedSubnetIds = resolveReferencedSubnetIds(values);
-      const referencedSubnetGroupIds = resolveReferencedSubnetGroupIds(values);
-      const explicitVpcId = referencedVpcIds[0];
-      const explicitVpcKeys = new Set<string>();
-
-      for (const referencedVpcId of referencedVpcIds) {
-        // Build context pre-indexes referenced VPC ids. Keep fallback for defensive robustness.
-        /* istanbul ignore next */
-        const vpcKey = context.vpcIdentifierToKey.get(referencedVpcId) ?? referencedVpcId;
-        context.vpcIdentifierToKey.set(referencedVpcId, vpcKey);
-        // Placement context pre-indexes referenced VPC ids; keep a defensive backfill.
-        /* istanbul ignore next */
-        if (!context.vpcs.get(vpcKey)) {
-          context.vpcs.set(vpcKey, { key: vpcKey, label: vpcKey });
-        }
-        explicitVpcKeys.add(vpcKey);
-      }
-
-      const subnetKeys = new Set<string>();
-      const vpcKeys = new Set<string>(explicitVpcKeys);
-      addSubnetIdentifiers(referencedSubnetIds, context, subnetKeys, explicitVpcId);
-
-      const resource = toStringValue(node.terraform?.resource);
-      const matchingEnrichers = enabledEnrichers.filter((enricher) =>
-        resource ? enricher.resources.has(resource) : false,
-      );
-      const isSubnetPlacementBlacklisted = isSubnetPlacementBlacklistedResource(resource);
-
-      for (const subnetGroupId of referencedSubnetGroupIds) {
-        for (const subnetKey of resolveSubnetsFromGroupByName(
-          GENERIC_SUBNET_GROUP_KIND,
-          subnetGroupId,
-          context,
-        )) {
-          subnetKeys.add(subnetKey);
-        }
-      }
-
-      const neighborSubnetGroupIds = this.resolveSubnetIdsFromNeighborSubnetGroups(
-        currentNodeId,
-        context,
-      );
-      addSubnetIdentifiers(neighborSubnetGroupIds, context, subnetKeys, explicitVpcId);
-
-      for (const enricher of matchingEnrichers) {
+      for (const enricher of resolution.matchingEnrichers) {
         enricher.apply({
           nodeId: currentNodeId,
-          node,
-          values,
+          node: resolution.node,
+          values: resolution.values,
           context,
-          subnetKeys,
-          vpcKeys,
-          explicitVpcId,
+          subnetKeys: resolution.subnetKeys,
+          vpcKeys: resolution.vpcKeys,
+          explicitVpcId: resolution.explicitVpcId,
+          controls: resolution.controls,
         });
       }
 
-      const edgeSubnetKeys = resolveNeighborSubnetKeys(
+      if (!resolution.controls.suppressPlacement) {
+        const edgeSubnetKeys = resolveNeighborSubnetKeys(
+          currentNodeId,
+          graph,
+          context.subnetNodeToKey,
+        );
+        if (edgeSubnetKeys.size > 0) {
+          resolution.subnetKeys.clear();
+          for (const key of edgeSubnetKeys) {
+            resolution.subnetKeys.add(key);
+          }
+        }
+      } else {
+        resolution.subnetKeys.clear();
+        resolution.vpcKeys.clear();
+      }
+
+      this.finalizePlacementResolution(
         currentNodeId,
         graph,
-        context.subnetNodeToKey,
+        context,
+        resolution,
+        placements,
+        clonePlans,
       );
-      if (edgeSubnetKeys.size > 0) {
-        subnetKeys.clear();
-        for (const key of edgeSubnetKeys) {
-          subnetKeys.add(key);
+    }
+
+    const reconcileCandidateIds = nodeIds.filter((currentNodeId) => {
+      if (parseReplicaSubnetKey(currentNodeId)) {
+        return false;
+      }
+
+      if (placements.has(currentNodeId)) {
+        return false;
+      }
+
+      const node = graph.getNodeAttributes(currentNodeId);
+      const resource = toStringValue(node?.terraform?.resource);
+      return enabledEnrichers.some(
+        (enricher) =>
+          !!enricher.reconcilePlacement && !!resource && enricher.resources.has(resource),
+      );
+    });
+
+    for (let attempt = 0; attempt < reconcileCandidateIds.length; attempt += 1) {
+      let changed = false;
+      const plannedSubnetKeysByNodeId = this.buildPlannedSubnetKeysByNodeId(placements, clonePlans);
+
+      for (const currentNodeId of reconcileCandidateIds) {
+        if (placements.has(currentNodeId)) {
+          continue;
+        }
+
+        const resolution = this.initializePlacementResolution(
+          currentNodeId,
+          graph,
+          context,
+          enabledEnrichers,
+        );
+        if (!resolution) {
+          continue;
+        }
+
+        for (const enricher of resolution.matchingEnrichers) {
+          enricher.apply({
+            nodeId: currentNodeId,
+            node: resolution.node,
+            values: resolution.values,
+            context,
+            subnetKeys: resolution.subnetKeys,
+            vpcKeys: resolution.vpcKeys,
+            explicitVpcId: resolution.explicitVpcId,
+            controls: resolution.controls,
+          });
+        }
+
+        if (!resolution.controls.suppressPlacement && resolution.subnetKeys.size === 0) {
+          for (const enricher of resolution.matchingEnrichers) {
+            enricher.reconcilePlacement?.({
+              nodeId: currentNodeId,
+              node: resolution.node,
+              values: resolution.values,
+              context,
+              subnetKeys: resolution.subnetKeys,
+              vpcKeys: resolution.vpcKeys,
+              explicitVpcId: resolution.explicitVpcId,
+              controls: resolution.controls,
+              plannedSubnetKeysByNodeId,
+            });
+          }
+        } else if (resolution.controls.suppressPlacement) {
+          resolution.subnetKeys.clear();
+          resolution.vpcKeys.clear();
+        }
+
+        if (
+          this.finalizePlacementResolution(
+            currentNodeId,
+            graph,
+            context,
+            resolution,
+            placements,
+            clonePlans,
+          )
+        ) {
+          changed = true;
         }
       }
 
-      for (const subnetKey of subnetKeys) {
-        const subnet = context.subnets.get(subnetKey);
-        if (subnet?.vpcKey) {
-          vpcKeys.add(subnet.vpcKey);
-        }
+      if (!changed) {
+        break;
       }
+    }
 
-      if (vpcKeys.size === 0 && explicitVpcKeys.size === 0 && subnetKeys.size === 0) {
-        for (const key of resolveNeighborVpcKeys(currentNodeId, graph, context.vpcNodeToKey)) {
-          vpcKeys.add(key);
-        }
+    return { placements, clonePlans };
+  }
+
+  private initializePlacementResolution(
+    currentNodeId: NodeId,
+    graph: AdapterOperations,
+    context: PlacementContext,
+    enabledEnrichers: PlacementEnricher[],
+  ): PlacementResolutionState | undefined {
+    const node = graph.getNodeAttributes(currentNodeId);
+    if (!node) {
+      return undefined;
+    }
+
+    const values = readStateValues(node);
+    const referencedVpcIds = resolveReferencedVpcIds(values);
+    const referencedSubnetIds = resolveReferencedSubnetIds(values);
+    const referencedSubnetGroupIds = resolveReferencedSubnetGroupIds(values);
+    const explicitVpcId = referencedVpcIds[0];
+    const explicitVpcKeys = new Set<string>();
+
+    for (const referencedVpcId of referencedVpcIds) {
+      // Build context pre-indexes referenced VPC ids. Keep fallback for defensive robustness.
+      /* istanbul ignore next */
+      const vpcKey = context.vpcIdentifierToKey.get(referencedVpcId) ?? referencedVpcId;
+      context.vpcIdentifierToKey.set(referencedVpcId, vpcKey);
+      // Placement context pre-indexes referenced VPC ids; keep a defensive backfill.
+      /* istanbul ignore next */
+      if (!context.vpcs.get(vpcKey)) {
+        context.vpcs.set(vpcKey, { key: vpcKey, label: vpcKey });
       }
+      explicitVpcKeys.add(vpcKey);
+    }
 
-      const ownVpcKey = context.vpcNodeToKey.get(String(currentNodeId));
-      if (ownVpcKey) {
-        vpcKeys.add(ownVpcKey);
+    const subnetKeys = new Set<string>();
+    const vpcKeys = new Set<string>(explicitVpcKeys);
+    addSubnetIdentifiers(referencedSubnetIds, context, subnetKeys, explicitVpcId);
+
+    const resource = toStringValue(node.terraform?.resource);
+    const matchingEnrichers = enabledEnrichers.filter((enricher) =>
+      resource ? enricher.resources.has(resource) : false,
+    );
+
+    for (const subnetGroupId of referencedSubnetGroupIds) {
+      for (const subnetKey of resolveSubnetsFromGroupByName(
+        GENERIC_SUBNET_GROUP_KIND,
+        subnetGroupId,
+        context,
+      )) {
+        subnetKeys.add(subnetKey);
       }
+    }
 
-      const ownSubnetKey = context.subnetNodeToKey.get(String(currentNodeId));
-      if (ownSubnetKey) {
-        subnetKeys.add(ownSubnetKey);
+    const neighborSubnetGroupIds = this.resolveSubnetIdsFromNeighborSubnetGroups(
+      currentNodeId,
+      context,
+    );
+    addSubnetIdentifiers(neighborSubnetGroupIds, context, subnetKeys, explicitVpcId);
+
+    return {
+      node,
+      values,
+      resource,
+      explicitVpcId,
+      explicitVpcKeys,
+      subnetKeys,
+      vpcKeys,
+      matchingEnrichers,
+      controls: {},
+      referencedVpcIds,
+      referencedSubnetIds,
+      referencedSubnetGroupIds,
+    };
+  }
+
+  private buildPlannedSubnetKeysByNodeId(
+    placements: ReadonlyMap<NodeId, NodeTopologyPlacement>,
+    clonePlans: readonly ClonePlan[],
+  ): Map<NodeId, readonly string[]> {
+    const plannedSubnetKeysByNodeId = new Map<NodeId, readonly string[]>();
+
+    for (const [nodeId, placement] of placements.entries()) {
+      const subnetKey = parseScopeSubnetKey(placement.scopeId);
+      if (subnetKey) {
+        plannedSubnetKeysByNodeId.set(nodeId, [subnetKey]);
       }
+    }
 
-      const networkAware =
-        referencedSubnetIds.length > 0 ||
+    for (const clonePlan of clonePlans) {
+      plannedSubnetKeysByNodeId.set(clonePlan.sourceNodeId, [...clonePlan.subnetKeys]);
+    }
+
+    return plannedSubnetKeysByNodeId;
+  }
+
+  private finalizePlacementResolution(
+    currentNodeId: NodeId,
+    graph: AdapterOperations,
+    context: PlacementContext,
+    resolution: PlacementResolutionState,
+    placements: Map<NodeId, NodeTopologyPlacement>,
+    clonePlans: ClonePlan[],
+  ): boolean {
+    const {
+      resource,
+      explicitVpcKeys,
+      subnetKeys,
+      vpcKeys,
+      controls,
+      referencedSubnetIds,
+      referencedVpcIds,
+      referencedSubnetGroupIds,
+      matchingEnrichers,
+    } = resolution;
+    const previousPlacement = placements.get(currentNodeId);
+    const hadClonePlan = clonePlans.some((clonePlan) => clonePlan.sourceNodeId === currentNodeId);
+    const hasPlacementChanged = (): boolean => {
+      const nextPlacement = placements.get(currentNodeId);
+      return (
+        nextPlacement?.scopeId !== previousPlacement?.scopeId ||
+        nextPlacement?.slotKey !== previousPlacement?.slotKey ||
+        nextPlacement?.slotOrder !== previousPlacement?.slotOrder
+      );
+    };
+
+    for (const subnetKey of subnetKeys) {
+      const subnet = context.subnets.get(subnetKey);
+      if (subnet?.vpcKey) {
+        vpcKeys.add(subnet.vpcKey);
+      }
+    }
+
+    if (vpcKeys.size === 0 && explicitVpcKeys.size === 0 && subnetKeys.size === 0) {
+      for (const key of resolveNeighborVpcKeys(currentNodeId, graph, context.vpcNodeToKey)) {
+        vpcKeys.add(key);
+      }
+    }
+
+    const ownVpcKey = context.vpcNodeToKey.get(String(currentNodeId));
+    if (ownVpcKey) {
+      vpcKeys.add(ownVpcKey);
+    }
+
+    const ownSubnetKey = context.subnetNodeToKey.get(String(currentNodeId));
+    if (ownSubnetKey) {
+      subnetKeys.add(ownSubnetKey);
+    }
+
+    const networkAware = controls.suppressPlacement
+      ? false
+      : referencedSubnetIds.length > 0 ||
         referencedVpcIds.length > 0 ||
         referencedSubnetGroupIds.length > 0 ||
         subnetKeys.size > 0 ||
         vpcKeys.size > 0 ||
         matchingEnrichers.length > 0;
+    const isSubnetPlacementBlacklisted = isSubnetPlacementBlacklistedResource(resource);
+    const sortedSubnetKeys = [...subnetKeys].sort((left, right) => left.localeCompare(right));
 
-      const sortedSubnetKeys = [...subnetKeys].sort((left, right) => left.localeCompare(right));
-      if (sortedSubnetKeys.length === 1) {
-        if (isSubnetPlacementBlacklisted) {
-          const subnetVpcScope = this.resolveVpcScopeFromSubnet(
-            sortedSubnetKeys[0],
-            context.subnets,
-          );
-          if (subnetVpcScope) {
-            placements.set(
-              currentNodeId,
-              this.buildTopologyPlacement(subnetVpcScope, resource),
-            );
-          }
-        } else {
-          const scopeId = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
-          if (scopeId) {
-            placements.set(
-              currentNodeId,
-              this.buildTopologyPlacement(scopeId, resource),
-            );
-          }
+    if (sortedSubnetKeys.length === 1) {
+      if (isSubnetPlacementBlacklisted) {
+        const subnetVpcScope = this.resolveVpcScopeFromSubnet(sortedSubnetKeys[0], context.subnets);
+        if (subnetVpcScope) {
+          placements.set(currentNodeId, this.buildTopologyPlacement(subnetVpcScope, resource));
         }
-        continue;
+      } else {
+        const scopeId = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
+        if (scopeId) {
+          placements.set(currentNodeId, this.buildTopologyPlacement(scopeId, resource));
+        }
       }
 
-      if (sortedSubnetKeys.length > 1) {
-        const subnetVpcKeys = sortedSubnetKeys
-          .map((subnetKey) => context.subnets.get(subnetKey)?.vpcKey)
-          .filter((vpcKey): vpcKey is string => !!vpcKey);
+      return hasPlacementChanged();
+    }
 
-        const uniqueSubnetVpcKeys = [...new Set(subnetVpcKeys)];
-        if (uniqueSubnetVpcKeys.length === 1) {
-          const shouldCloneMultiSubnet = !isSubnetPlacementBlacklisted;
+    if (sortedSubnetKeys.length > 1) {
+      const subnetVpcKeys = sortedSubnetKeys
+        .map((subnetKey) => context.subnets.get(subnetKey)?.vpcKey)
+        .filter((vpcKey): vpcKey is string => !!vpcKey);
+      const uniqueSubnetVpcKeys = [...new Set(subnetVpcKeys)];
 
-          if (
-            shouldCloneMultiSubnet &&
-            subnetVpcKeys.length === sortedSubnetKeys.length &&
-            sortedSubnetKeys.length > 0
-          ) {
-            const firstSubnetScope = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
-            if (firstSubnetScope) {
-              placements.set(
-                currentNodeId,
-                this.buildTopologyPlacement(firstSubnetScope, resource),
-              );
-            }
+      if (uniqueSubnetVpcKeys.length === 1) {
+        const shouldCloneMultiSubnet = !isSubnetPlacementBlacklisted;
 
-            const existingAdditionalReplicaCount = sortedSubnetKeys
-              .slice(1)
-              .filter((subnetKey) =>
-                graph.getNodeAttributes(buildReplicaNodeId(currentNodeId, subnetKey)),
-              ).length;
+        if (
+          shouldCloneMultiSubnet &&
+          subnetVpcKeys.length === sortedSubnetKeys.length &&
+          sortedSubnetKeys.length > 0
+        ) {
+          const firstSubnetScope = this.resolveSubnetScope(sortedSubnetKeys[0], context.subnets);
+          if (firstSubnetScope) {
+            placements.set(currentNodeId, this.buildTopologyPlacement(firstSubnetScope, resource));
+          }
 
-            if (existingAdditionalReplicaCount < sortedSubnetKeys.length - 1) {
-              const subnetScopeIds: Record<string, string> = {};
-              for (const subnetKey of sortedSubnetKeys) {
-                const subnetScopeId = this.resolveSubnetScope(subnetKey, context.subnets);
-                if (subnetScopeId) {
-                  subnetScopeIds[subnetKey] = subnetScopeId;
-                }
+          const existingAdditionalReplicaCount = sortedSubnetKeys
+            .slice(1)
+            .filter((subnetKey) => graph.getNodeAttributes(buildReplicaNodeId(currentNodeId, subnetKey)))
+            .length;
+
+          if (!hadClonePlan && existingAdditionalReplicaCount < sortedSubnetKeys.length - 1) {
+            const subnetScopeIds: Record<string, string> = {};
+            for (const subnetKey of sortedSubnetKeys) {
+              const subnetScopeId = this.resolveSubnetScope(subnetKey, context.subnets);
+              if (subnetScopeId) {
+                subnetScopeIds[subnetKey] = subnetScopeId;
               }
-
-              clonePlans.push({
-                sourceNodeId: currentNodeId,
-                subnetKeys: sortedSubnetKeys,
-                subnetScopeIds,
-                incomingEdges: graph.inEdges(currentNodeId).map((edgeId) => ({
-                  id: String(edgeId),
-                  source: graph.edgeSource(edgeId),
-                  target: graph.edgeTarget(edgeId),
-                  attributes: graph.getEdgeAttributes(edgeId),
-                })),
-                outgoingEdges: graph.outEdges(currentNodeId).map((edgeId) => ({
-                  id: String(edgeId),
-                  source: graph.edgeSource(edgeId),
-                  target: graph.edgeTarget(edgeId),
-                  attributes: graph.getEdgeAttributes(edgeId),
-                })),
-              });
             }
-            continue;
+
+            clonePlans.push({
+              sourceNodeId: currentNodeId,
+              subnetKeys: sortedSubnetKeys,
+              subnetScopeIds,
+              incomingEdges: graph.inEdges(currentNodeId).map((edgeId) => ({
+                id: String(edgeId),
+                source: graph.edgeSource(edgeId),
+                target: graph.edgeTarget(edgeId),
+                attributes: graph.getEdgeAttributes(edgeId),
+              })),
+              outgoingEdges: graph.outEdges(currentNodeId).map((edgeId) => ({
+                id: String(edgeId),
+                source: graph.edgeSource(edgeId),
+                target: graph.edgeTarget(edgeId),
+                attributes: graph.getEdgeAttributes(edgeId),
+              })),
+            });
           }
 
-          placements.set(
-            currentNodeId,
-            this.buildTopologyPlacement(
-              buildVpcScopeId(uniqueSubnetVpcKeys[0]),
-              resource,
-            ),
+          return (
+            hasPlacementChanged() ||
+            clonePlans.some((clonePlan) => clonePlan.sourceNodeId === currentNodeId) !== hadClonePlan
           );
-        } else if (networkAware) {
-          const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
-          if (fallbackVpcKey) {
-            placements.set(
-              currentNodeId,
-              this.buildTopologyPlacement(buildVpcScopeId(fallbackVpcKey), resource),
-            );
-          }
         }
 
-        continue;
-      }
-
-      if (vpcKeys.size === 1) {
         placements.set(
           currentNodeId,
-          this.buildTopologyPlacement(buildVpcScopeId([...vpcKeys][0]), resource),
+          this.buildTopologyPlacement(buildVpcScopeId(uniqueSubnetVpcKeys[0]), resource),
         );
-      } else if (networkAware) {
+        return hasPlacementChanged();
+      }
+
+      if (networkAware) {
         const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
         if (fallbackVpcKey) {
           placements.set(
@@ -409,9 +589,26 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
           );
         }
       }
+
+      return hasPlacementChanged();
     }
 
-    return { placements, clonePlans };
+    if (vpcKeys.size === 1) {
+      placements.set(
+        currentNodeId,
+        this.buildTopologyPlacement(buildVpcScopeId([...vpcKeys][0]), resource),
+      );
+    } else if (networkAware) {
+      const fallbackVpcKey = this.resolveSinglePlaceableVpcKey(context);
+      if (fallbackVpcKey) {
+        placements.set(
+          currentNodeId,
+          this.buildTopologyPlacement(buildVpcScopeId(fallbackVpcKey), resource),
+        );
+      }
+    }
+
+    return hasPlacementChanged();
   }
 
   private buildPlacementContext(
@@ -609,7 +806,6 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
     return context;
   }
-
   private resolveSubnetIdsFromNeighborSubnetGroups(
     nodeId: NodeId,
     context: PlacementContext,
@@ -736,11 +932,13 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
     if (placement.slotKey) {
       nextTopology.slotKey = placement.slotKey;
     } else {
+      // biome-ignore lint/performance/noDelete: <explanation>
       delete nextTopology.slotKey;
     }
     if (typeof placement.slotOrder === 'number') {
       nextTopology.slotOrder = placement.slotOrder;
     } else {
+      // biome-ignore lint/performance/noDelete: <explanation>
       delete nextTopology.slotOrder;
     }
 
@@ -786,10 +984,7 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
         updated = this.upsertTopologyPlacement(
           updated.setNodeAttributes(cloneNodeId, cloneAttributes),
           cloneNodeId,
-          this.buildTopologyPlacement(
-            cloneScopeId,
-            toStringValue(sourceNode.terraform?.resource),
-          ),
+          this.buildTopologyPlacement(cloneScopeId, toStringValue(sourceNode.terraform?.resource)),
         );
       }
     }
