@@ -1,8 +1,8 @@
-import { DefaultEdgeDirectionSemantics } from '@terra-graph/core';
+import { DefaultEdgeSemantics } from '@terra-graph/core';
 
-export const AwsEdgeDirectionSemantics = {
-  ...DefaultEdgeDirectionSemantics,
+export const AwsEdgeSemantics = {
+  ...DefaultEdgeSemantics,
 } as const;
 
-export type AwsEdgeDirectionSemantic =
-  (typeof AwsEdgeDirectionSemantics)[keyof typeof AwsEdgeDirectionSemantics];
+export type AwsEdgeSemantic =
+  (typeof AwsEdgeSemantics)[keyof typeof AwsEdgeSemantics];

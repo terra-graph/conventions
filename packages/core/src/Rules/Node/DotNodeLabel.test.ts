@@ -6,7 +6,6 @@ import {
   type TgNodeAttributes,
   asNodeId,
 } from '@terra-graph/core';
-import { DirectedGraph } from 'graphology';
 import { DotNodeLabel } from './DotNodeLabel.js';
 import '../registerAll.js';
 
@@ -55,8 +54,8 @@ describe('DotNodeLabel.supports', () => {
       node: { nodeId: { eq: 'node-a' } },
     });
 
-    const dotAdapter = new DotAdapter(new DirectedGraph());
-    const graphAdapter = new GraphologyAdapter(new DirectedGraph());
+    const dotAdapter = new DotAdapter();
+    const graphAdapter = new GraphologyAdapter();
 
     expect(rule.supports(dotAdapter)).toBe(true);
     expect(rule.supports(graphAdapter)).toBe(false);
@@ -75,7 +74,7 @@ describe('DotNodeLabel.apply', () => {
       edges: [],
     };
 
-    const adapter = new DotAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new DotAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(nodeId);
     if (!node) {
       throw new Error('Missing node attributes for node');
@@ -112,7 +111,7 @@ describe('DotNodeLabel.apply', () => {
       edges: [],
     };
 
-    const adapter = new DotAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new DotAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(nodeId);
     if (!node) {
       throw new Error('Missing node attributes for node');
@@ -149,7 +148,7 @@ describe('DotNodeLabel.apply', () => {
       edges: [],
     };
 
-    const adapter = new DotAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new DotAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(nodeId);
     if (!node) {
       throw new Error('Missing node attributes for node');
@@ -196,7 +195,7 @@ describe('DotNodeLabel.apply', () => {
       edges: [],
     };
 
-    const adapter = new DotAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new DotAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(nodeId);
     if (!node) {
       throw new Error('Missing node attributes for node');

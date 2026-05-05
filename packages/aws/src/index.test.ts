@@ -1,10 +1,10 @@
-import { DefaultEdgeDirectionSemantics, DotAdapter } from '@terra-graph/core';
+import { DefaultEdgeSemantics, DotAdapter } from '@terra-graph/core';
 import { conventionDataFlowBaseProfileName } from './conventions/dataflow/profiles/base.js';
 import { conventionDataFlowDotProfileName } from './conventions/dataflow/profiles/dot.js';
 import dataFlowConventionRules from './conventions/dataflow/rules.js';
 import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
 import { Convention } from './conventions/index.js';
-import buildRuntimeProvider, { AwsEdgeDirectionSemantics } from './index.js';
+import buildRuntimeProvider, { AwsEdgeSemantics } from './index.js';
 import { conventionName, ruleName, ruleSetName } from './namespaces.js';
 import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
 import { IamPlugin } from './plugins/IamPlugin.js';
@@ -78,6 +78,9 @@ describe('aws provider', () => {
   });
 
   it('shoud export aws edge direction semantic names', () => {
-    expect(AwsEdgeDirectionSemantics).toEqual(DefaultEdgeDirectionSemantics);
+    expect(AwsEdgeSemantics).toEqual(DefaultEdgeSemantics);
+    expect(AwsEdgeSemantics.Authorizes.role).toBe('supporting');
+    expect(AwsEdgeSemantics.Accesses.role).toBe('primary');
+    expect(AwsEdgeSemantics.ObservedBy.role).toBe('supporting');
   });
 });

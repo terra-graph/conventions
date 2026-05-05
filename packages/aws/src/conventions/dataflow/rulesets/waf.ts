@@ -1,9 +1,9 @@
-import { EdgeDirectionSemantic, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const wafSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -19,11 +19,11 @@ export const wafSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -39,11 +39,11 @@ export const wafSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -59,11 +59,11 @@ export const wafSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.ObservedBy,
+        semantic: AwsEdgeSemantics.ObservedBy,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -79,7 +79,7 @@ export const wafSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),

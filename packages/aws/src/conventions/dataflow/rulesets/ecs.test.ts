@@ -120,13 +120,13 @@ describe('ecs dataflow rulesets', () => {
       ],
     });
 
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-task-definition')).directionSemantic).toBe(
+    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-task-definition')).hints?.semantic?.semantic).toBe(
       'invokes',
     );
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-topic')).directionSemantic).toBe(
+    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-topic')).hints?.semantic?.semantic).toBe(
       'publishes',
     );
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-table')).directionSemantic).toBe(
+    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-table')).hints?.semantic?.semantic).toBe(
       'accesses',
     );
   });

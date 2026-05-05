@@ -118,14 +118,14 @@ describe('albSemanticsRuleSet', () => {
       albSemanticsRuleSet.resolvePhases()[0] ?? [],
     );
 
-    expect(updated.getEdgeAttributes(asEdgeId('lb-listener'))?.directionSemantic).toBe('routes');
-    expect(updated.getEdgeAttributes(asEdgeId('listener-target-group'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('lb-listener'))?.hints?.semantic?.semantic).toBe('routes');
+    expect(updated.getEdgeAttributes(asEdgeId('listener-target-group'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
-    expect(updated.getEdgeAttributes(asEdgeId('listener-service'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('listener-service'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
-    expect(updated.getEdgeAttributes(asEdgeId('target-group-service'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('target-group-service'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
   });
@@ -173,7 +173,7 @@ describe('albSemanticsRuleSet', () => {
 
     expect(updated.edgeSource(edgeId)).toBe(loadBalancerId);
     expect(updated.edgeTarget(edgeId)).toBe(ecsServiceId);
-    expect(updated.getEdgeAttributes(edgeId)?.directionSemantic).toBe('routes');
+    expect(updated.getEdgeAttributes(edgeId)?.hints?.semantic?.semantic).toBe('routes');
   });
 
   it('shoud reinterpret target groups as routing to autoscaling groups via enforceDirection', () => {
@@ -219,7 +219,7 @@ describe('albSemanticsRuleSet', () => {
 
     expect(updated.edgeSource(edgeId)).toBe(targetGroupId);
     expect(updated.edgeTarget(edgeId)).toBe(asgId);
-    expect(updated.getEdgeAttributes(edgeId)?.directionSemantic).toBe('routes');
+    expect(updated.getEdgeAttributes(edgeId)?.hints?.semantic?.semantic).toBe('routes');
   });
 });
 
@@ -302,7 +302,7 @@ describe('albCleanupRuleSet', () => {
       .outEdges(loadBalancerId)
       .find((edgeId) => updated.edgeTarget(edgeId) === ecsServiceId);
     expect(directEdgeId).toBeDefined();
-    expect(updated.getEdgeAttributes(directEdgeId!)?.directionSemantic).toBe('routes');
+    expect(updated.getEdgeAttributes(directEdgeId!)?.hints?.semantic?.semantic).toBe('routes');
   });
 
   it('shoud collapse cloned listener and target group chains without cross-subnet lb routes', () => {

@@ -1,6 +1,6 @@
 import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
-import { AwsEdgeDirectionSemantics } from './edgeSemantics.js';
+import { AwsEdgeSemantics } from './edgeSemantics.js';
 import dataFlowConventionRules from './rules.js';
 import dataFlowConventionRuleSet from './rulesets.js';
 
@@ -24,25 +24,25 @@ describe('dataflow convention rule sets', () => {
       conventionName(Convention.DataFlow, ruleSetName('semantics')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
-    const semanticValues = new Set<string>(Object.values(AwsEdgeDirectionSemantics));
+    const semanticValues = new Set<string>(Object.values(AwsEdgeSemantics).map(({ semantic }) => semantic));
 
     expect(phases).toHaveLength(1);
     const phaseRuleIds = phases[0].map((rule) => rule.serialize().id);
     expect(phaseRuleIds).toContain('EdgeSemanticLegend');
-    expect(phaseRuleIds.filter((id) => id === 'EdgeDirectionSemantic').length).toBeGreaterThan(13);
+    expect(phaseRuleIds.filter((id) => id === 'EdgeSemantic').length).toBeGreaterThan(13);
 
-    const directionSemanticValues = phases[0]
-      .filter((rule) => rule.serialize().id === 'EdgeDirectionSemantic')
+    const semanticNames = phases[0]
+      .filter((rule) => rule.serialize().id === 'EdgeSemantic')
       .map(
         (rule) =>
           (
             rule.serialize().config as {
-              options?: { semantic?: string };
+              options?: { semantic?: { semantic?: string } };
             }
-          ).options?.semantic,
+          ).options?.semantic?.semantic,
       );
-    expect(directionSemanticValues.length).toBeGreaterThan(13);
-    for (const semantic of directionSemanticValues) {
+    expect(semanticNames.length).toBeGreaterThan(13);
+    for (const semantic of semanticNames) {
       expect(semantic).toBeDefined();
       expect(semanticValues.has(semantic as string)).toBe(true);
     }
@@ -72,10 +72,10 @@ describe('dataflow convention rule sets', () => {
     expect(serializedRules).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'EdgeDirectionSemantic',
+          id: 'EdgeSemantic',
           config: expect.objectContaining({
             options: expect.objectContaining({
-              semantic: AwsEdgeDirectionSemantics.Routes,
+              semantic: AwsEdgeSemantics.Routes,
               enforceDirection: true,
             }),
             edge: expect.objectContaining({
@@ -95,10 +95,10 @@ describe('dataflow convention rule sets', () => {
           }),
         }),
         expect.objectContaining({
-          id: 'EdgeDirectionSemantic',
+          id: 'EdgeSemantic',
           config: expect.objectContaining({
             options: expect.objectContaining({
-              semantic: AwsEdgeDirectionSemantics.Invokes,
+              semantic: AwsEdgeSemantics.Invokes,
               enforceDirection: true,
             }),
             edge: expect.objectContaining({
@@ -123,7 +123,7 @@ describe('dataflow convention rule sets', () => {
     expect(serializedRules).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'EdgeDirectionSemantic',
+          id: 'EdgeSemantic',
           config: expect.objectContaining({
             edge: expect.objectContaining({
               from: expect.objectContaining({
@@ -154,7 +154,18 @@ describe('dataflow convention rule sets', () => {
     expect(serializedRules).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'RemoveNodeAndReconnectEdges',
+          id: 'MaterializeDirectAlbRoutes',
+          config: expect.objectContaining({
+            node: expect.objectContaining({
+              attr: expect.objectContaining({
+                key: 'terraform.resource',
+                eq: 'aws_lb',
+              }),
+            }),
+          }),
+        }),
+        expect.objectContaining({
+          id: 'RemoveNode',
           config: expect.objectContaining({
             node: expect.objectContaining({
               attr: expect.objectContaining({
@@ -165,7 +176,7 @@ describe('dataflow convention rule sets', () => {
           }),
         }),
         expect.objectContaining({
-          id: 'RemoveNodeAndReconnectEdges',
+          id: 'RemoveNode',
           config: expect.objectContaining({
             node: expect.objectContaining({
               attr: expect.objectContaining({
@@ -237,10 +248,10 @@ describe('dataflow convention rule sets', () => {
     expect(serializedRules).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'EdgeDirectionSemantic',
+          id: 'EdgeSemantic',
           config: expect.objectContaining({
             options: expect.objectContaining({
-              semantic: AwsEdgeDirectionSemantics.Authorizes,
+              semantic: AwsEdgeSemantics.Authorizes,
               enforceDirection: true,
             }),
             edge: expect.objectContaining({
@@ -258,6 +269,14 @@ describe('dataflow convention rule sets', () => {
         }),
       ]),
     );
+  });
+
+  it('shoud carry the expected semantic roles for supporting and primary edges', () => {
+    expect(AwsEdgeSemantics.Authorizes.role).toBe('supporting');
+    expect(AwsEdgeSemantics.Accesses.role).toBe('primary');
+    expect(AwsEdgeSemantics.ObservedBy.role).toBe('supporting');
+    expect(AwsEdgeSemantics.Invokes.role).toBe('primary');
+    expect(AwsEdgeSemantics.Routes.role).toBe('primary');
   });
 
   it('shoud tolerate empty resolved phases from imported rule sets', () => {

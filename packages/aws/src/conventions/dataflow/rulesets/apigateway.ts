@@ -1,5 +1,5 @@
-import { EdgeDirectionSemantic, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 const API_RESOURCES = ['aws_apigatewayv2_api', 'aws_api_gateway_rest_api'];
 const ROUTE_RESOURCES = [
@@ -18,7 +18,7 @@ const NON_TARGET_RESOURCE_PREFIXES = [
 
 export const apiGatewaySemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -34,11 +34,11 @@ export const apiGatewaySemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -54,11 +54,11 @@ export const apiGatewaySemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -76,7 +76,7 @@ export const apiGatewaySemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),

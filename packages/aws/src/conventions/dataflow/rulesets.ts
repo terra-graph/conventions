@@ -83,7 +83,7 @@ export default new NamedRuleSetRegistry({
 Legacy inline semantics ruleset (comparison reference):
   [conventionName(Convention.DataFlow, ruleSetName('semantics'))]: new RuleSet({
     rules: [
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -96,10 +96,10 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeSemantics.Authorizes,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             and: [
@@ -124,11 +124,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -141,11 +141,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             any: true,
@@ -158,11 +158,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -180,11 +180,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -200,11 +200,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -220,11 +220,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeSemantics.Triggers,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -240,11 +240,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeSemantics.Accesses,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -269,11 +269,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -289,11 +289,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -312,11 +312,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeSemantics.Triggers,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -344,10 +344,10 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Publishes,
+          semantic: AwsEdgeSemantics.Publishes,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -363,11 +363,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeSemantics.Accesses,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -403,11 +403,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeSemantics.Accesses,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -425,11 +425,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -445,11 +445,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -465,11 +465,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -485,11 +485,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeSemantics.Accesses,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -505,11 +505,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeSemantics.Triggers,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -525,12 +525,12 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Publishes,
+          semantic: AwsEdgeSemantics.Publishes,
           enforceDirection: true,
         },
       }),
       // this is the generic one
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -564,12 +564,12 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Triggers,
+          semantic: AwsEdgeSemantics.Triggers,
           enforceDirection: true,
         },
       }),
       // another weird generic rule
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -591,11 +591,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -625,11 +625,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Routes,
+          semantic: AwsEdgeSemantics.Routes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -645,11 +645,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Routes,
+          semantic: AwsEdgeSemantics.Routes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -665,11 +665,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -689,11 +689,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Authorizes,
+          semantic: AwsEdgeSemantics.Authorizes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -709,11 +709,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.ObservedBy,
+          semantic: AwsEdgeSemantics.ObservedBy,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -729,11 +729,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Accesses,
+          semantic: AwsEdgeSemantics.Accesses,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -749,11 +749,11 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
-      new EdgeDirectionSemantic({
+      new EdgeSemantic({
         edge: {
           from: {
             attr: {
@@ -769,7 +769,7 @@ Legacy inline semantics ruleset (comparison reference):
           },
         },
         options: {
-          semantic: AwsEdgeDirectionSemantics.Invokes,
+          semantic: AwsEdgeSemantics.Invokes,
           enforceDirection: true,
         },
       }),
@@ -780,31 +780,31 @@ Legacy inline semantics ruleset (comparison reference):
         },
         options: {
           legendBySemantic: {
-            [AwsEdgeDirectionSemantics.Invokes]: {
+            [AwsEdgeSemantics.Invokes.semantic]: {
               title: 'Invokes',
               colour: '#0d6efd',
             },
-            [AwsEdgeDirectionSemantics.Accesses]: {
+            [AwsEdgeSemantics.Accesses.semantic]: {
               title: 'Accesses data',
               colour: '#198754',
             },
-            [AwsEdgeDirectionSemantics.Publishes]: {
+            [AwsEdgeSemantics.Publishes.semantic]: {
               title: 'Publishes event',
               colour: '#fd7e14',
             },
-            [AwsEdgeDirectionSemantics.Triggers]: {
+            [AwsEdgeSemantics.Triggers.semantic]: {
               title: 'Triggers async consumer',
               colour: '#dc3545',
             },
-            [AwsEdgeDirectionSemantics.Routes]: {
+            [AwsEdgeSemantics.Routes.semantic]: {
               title: 'Routes request',
               colour: '#6f42c1',
             },
-            [AwsEdgeDirectionSemantics.Authorizes]: {
+            [AwsEdgeSemantics.Authorizes.semantic]: {
               title: 'Authorizes',
               colour: '#8dd7c5',
             },
-            [AwsEdgeDirectionSemantics.ObservedBy]: {
+            [AwsEdgeSemantics.ObservedBy.semantic]: {
               title: 'Observed by telemetry',
               colour: '#20c997',
             },

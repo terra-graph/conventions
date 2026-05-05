@@ -1,5 +1,5 @@
 import { EdgeSemanticLegend, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const legendSemanticsRuleSet = new RuleSet({
   rules: [
@@ -10,31 +10,31 @@ export const legendSemanticsRuleSet = new RuleSet({
       },
       options: {
         legendBySemantic: {
-          [AwsEdgeDirectionSemantics.Invokes]: {
+          [AwsEdgeSemantics.Invokes.semantic]: {
             title: 'Invokes',
             colour: '#0d6efd',
           },
-          [AwsEdgeDirectionSemantics.Accesses]: {
+          [AwsEdgeSemantics.Accesses.semantic]: {
             title: 'Accesses data',
             colour: '#198754',
           },
-          [AwsEdgeDirectionSemantics.Publishes]: {
+          [AwsEdgeSemantics.Publishes.semantic]: {
             title: 'Publishes event',
             colour: '#fd7e14',
           },
-          [AwsEdgeDirectionSemantics.Triggers]: {
+          [AwsEdgeSemantics.Triggers.semantic]: {
             title: 'Triggers async consumer',
             colour: '#dc3545',
           },
-          [AwsEdgeDirectionSemantics.Routes]: {
+          [AwsEdgeSemantics.Routes.semantic]: {
             title: 'Routes request',
             colour: '#6f42c1',
           },
-          [AwsEdgeDirectionSemantics.Authorizes]: {
+          [AwsEdgeSemantics.Authorizes.semantic]: {
             title: 'Authorizes',
             colour: '#8dd7c5',
           },
-          [AwsEdgeDirectionSemantics.ObservedBy]: {
+          [AwsEdgeSemantics.ObservedBy.semantic]: {
             title: 'Observed by telemetry',
             colour: '#20c997',
           },

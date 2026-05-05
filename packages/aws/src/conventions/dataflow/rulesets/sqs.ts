@@ -1,9 +1,9 @@
-import { EdgeDirectionSemantic, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const sqsSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -19,11 +19,11 @@ export const sqsSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Triggers,
+        semantic: AwsEdgeSemantics.Triggers,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -39,7 +39,7 @@ export const sqsSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Publishes,
+        semantic: AwsEdgeSemantics.Publishes,
         enforceDirection: true,
       },
     }),

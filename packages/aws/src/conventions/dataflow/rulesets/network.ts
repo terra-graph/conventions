@@ -1,9 +1,9 @@
-import { EdgeDirectionSemantic, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const networkSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -19,11 +19,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -39,11 +39,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -59,11 +59,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -79,11 +79,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -99,11 +99,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -135,11 +135,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -155,11 +155,11 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -175,7 +175,7 @@ export const networkSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),

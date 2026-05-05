@@ -5,7 +5,6 @@ import {
   asEdgeId,
   asNodeId,
 } from '@terra-graph/core';
-import { DirectedGraph } from 'graphology';
 import { CollapseIndexedResourceTemplates } from './CollapseIndexedResourceTemplates.js';
 
 describe('CollapseIndexedResourceTemplates.apply', () => {
@@ -25,7 +24,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       edges: [],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(template);
     if (!node) {
       throw new Error('Missing node attributes for template node');
@@ -56,7 +55,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       edges: [],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(moduleNode);
     if (!node) {
       throw new Error('Missing node attributes for module node');
@@ -88,7 +87,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       edges: [],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(resourceNode);
     if (!node) {
       throw new Error('Missing node attributes for resource node');
@@ -140,7 +139,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       ],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(template);
     if (!node) {
       throw new Error('Missing node attributes for template node');
@@ -185,7 +184,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       edges: [],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(template);
     if (!node) {
       throw new Error('Missing node attributes for template node');
@@ -275,7 +274,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       ],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(template);
     if (!node) {
       throw new Error('Missing node attributes for template node');
@@ -321,7 +320,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       edges: [],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(indexed);
     if (!node) {
       throw new Error('Missing node attributes for indexed node');
@@ -378,7 +377,7 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
       ],
     };
 
-    const adapter = new GraphologyAdapter(new DirectedGraph()).withTgGraph(tg);
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
     const node = adapter.getNodeAttributes(template);
     if (!node) {
       throw new Error('Missing node attributes for template node');

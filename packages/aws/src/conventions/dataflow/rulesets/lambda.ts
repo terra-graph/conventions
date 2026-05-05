@@ -1,5 +1,5 @@
-import { EdgeDirectionSemantic, RemoveNode, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RemoveNode, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const lambdaPreRuleSet = new RuleSet({
   rules: [
@@ -27,7 +27,7 @@ export const lambdaPreRuleSet = new RuleSet({
 
 export const lambdaSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -40,11 +40,11 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Authorizes,
+        semantic: AwsEdgeSemantics.Authorizes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -60,11 +60,11 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Triggers,
+        semantic: AwsEdgeSemantics.Triggers,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -89,11 +89,11 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -114,10 +114,10 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Publishes,
+        semantic: AwsEdgeSemantics.Publishes,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -143,11 +143,11 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Accesses,
+        semantic: AwsEdgeSemantics.Accesses,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -163,7 +163,7 @@ export const lambdaSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),

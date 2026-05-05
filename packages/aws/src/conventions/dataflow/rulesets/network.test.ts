@@ -174,18 +174,18 @@ describe('networkSemanticsRuleSet', () => {
       ],
     });
 
-    expect(updated.getEdgeAttributes(asEdgeId('association-route-table'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('association-route-table'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
     expect(updated.edgeSource(asEdgeId('route-igw-route-table'))).toBe(routeTableId);
     expect(updated.edgeTarget(asEdgeId('route-igw-route-table'))).toBe(routeToIgwId);
-    expect(updated.getEdgeAttributes(asEdgeId('route-igw-route-table'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('route-igw-route-table'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
     expect(updated.edgeSource(asEdgeId('route-nat-route-table'))).toBe(routeTableId);
     expect(updated.edgeTarget(asEdgeId('route-nat-route-table'))).toBe(routeToNatId);
-    expect(updated.getEdgeAttributes(asEdgeId('route-nat'))?.directionSemantic).toBe('routes');
-    expect(updated.getEdgeAttributes(asEdgeId('route-endpoint'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('route-nat'))?.hints?.semantic?.semantic).toBe('routes');
+    expect(updated.getEdgeAttributes(asEdgeId('route-endpoint'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
   });
@@ -243,10 +243,10 @@ describe('networkSemanticsRuleSet', () => {
       ],
     });
 
-    expect(updated.getEdgeAttributes(asEdgeId('ingress-sg'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('ingress-sg'))?.hints?.semantic?.semantic).toBe(
       'authorizes',
     );
-    expect(updated.getEdgeAttributes(asEdgeId('egress-sg'))?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('egress-sg'))?.hints?.semantic?.semantic).toBe(
       'authorizes',
     );
   });
@@ -291,7 +291,7 @@ describe('networkSemanticsRuleSet', () => {
 
     expect(updated.edgeSource(edgeId)).toBe(securityGroupId);
     expect(updated.edgeTarget(edgeId)).toBe(rdsClusterId);
-    expect(updated.getEdgeAttributes(edgeId)?.directionSemantic).toBe(
+    expect(updated.getEdgeAttributes(edgeId)?.hints?.semantic?.semantic).toBe(
       'authorizes',
     );
   });
@@ -349,7 +349,7 @@ describe('networkSemanticsRuleSet', () => {
       ],
     });
 
-    expect(updated.getEdgeAttributes(asEdgeId('sg-vpc'))?.directionSemantic).toBeUndefined();
-    expect(updated.getEdgeAttributes(asEdgeId('sg-sg'))?.directionSemantic).toBeUndefined();
+    expect(updated.getEdgeAttributes(asEdgeId('sg-vpc'))?.hints?.semantic?.semantic).toBeUndefined();
+    expect(updated.getEdgeAttributes(asEdgeId('sg-sg'))?.hints?.semantic?.semantic).toBeUndefined();
   });
 });

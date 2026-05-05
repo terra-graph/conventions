@@ -1,6 +1,6 @@
 import {
   type AdapterOperations,
-  EdgeDirectionSemantic,
+  EdgeSemantic,
   type NodeId,
   NodeRule,
   RemoveNode,
@@ -8,7 +8,7 @@ import {
   type TgNodeAttributes,
   edgeIdFrom,
 } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 const LOAD_BALANCER_RESOURCE = 'aws_lb';
 const LOAD_BALANCER_LISTENER_RESOURCE = 'aws_lb_listener';
@@ -162,7 +162,7 @@ class MaterializeDirectAlbRoutes extends NodeRule {
 
 export const albSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -178,11 +178,11 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -198,11 +198,11 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -218,11 +218,11 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -238,11 +238,11 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -258,11 +258,11 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -278,7 +278,7 @@ export const albSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
@@ -311,7 +311,7 @@ export const albCleanupRuleSet = new RuleSet({
         },
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -327,11 +327,11 @@ export const albCleanupRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -347,7 +347,7 @@ export const albCleanupRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Routes,
+        semantic: AwsEdgeSemantics.Routes,
         enforceDirection: true,
       },
     }),

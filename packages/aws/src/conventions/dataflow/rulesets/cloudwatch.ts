@@ -1,5 +1,5 @@
-import { EdgeDirectionSemantic, RemoveNode, RuleSet } from '@terra-graph/core';
-import { AwsEdgeDirectionSemantics } from '../edgeSemantics.js';
+import { EdgeSemantic, RemoveNode, RuleSet } from '@terra-graph/core';
+import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 export const cloudwatchPreRuleSet = new RuleSet({
   rules: [
@@ -32,7 +32,7 @@ export const cloudwatchPreRuleSet = new RuleSet({
 
 export const cloudwatchSemanticsRuleSet = new RuleSet({
   rules: [
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           any: true,
@@ -45,11 +45,11 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.ObservedBy,
+        semantic: AwsEdgeSemantics.ObservedBy,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -67,11 +67,11 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.ObservedBy,
+        semantic: AwsEdgeSemantics.ObservedBy,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -87,11 +87,11 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -117,11 +117,11 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Accesses,
+        semantic: AwsEdgeSemantics.Accesses,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -137,11 +137,11 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),
-    new EdgeDirectionSemantic({
+    new EdgeSemantic({
       edge: {
         from: {
           attr: {
@@ -157,7 +157,7 @@ export const cloudwatchSemanticsRuleSet = new RuleSet({
         },
       },
       options: {
-        semantic: AwsEdgeDirectionSemantics.Invokes,
+        semantic: AwsEdgeSemantics.Invokes,
         enforceDirection: true,
       },
     }),
