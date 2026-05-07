@@ -30,7 +30,6 @@ export const coreDot = new Profile(profileName('dot'), {
         { namedRule: 'core.remove.providers' },
         { namedRule: 'core.remove.root' },
         { namedRule: 'core.remove.artifacts' },
-        { namedRule: 'core.remove.childless_modules' },
       ],
     },
     {

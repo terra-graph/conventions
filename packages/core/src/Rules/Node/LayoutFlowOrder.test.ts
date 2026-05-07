@@ -1,9 +1,4 @@
-import {
-  GraphologyAdapter,
-  TG_SCHEMA_VERSION,
-  type TgGraph,
-  asNodeId,
-} from '@terra-graph/core';
+import { GraphologyAdapter, TG_SCHEMA_VERSION, type TgGraph, asNodeId } from '@terra-graph/core';
 import { LayoutFlowOrder } from './LayoutFlowOrder.js';
 
 describe('LayoutFlowOrder.constructor', () => {
@@ -25,9 +20,7 @@ describe('LayoutFlowOrder.constructor', () => {
             order: ['aws_lb'],
           },
         }),
-    ).toThrow(
-      `Rule 'LayoutFlowOrder' requires options.order to be an array of string arrays`,
-    );
+    ).toThrow(`Rule 'LayoutFlowOrder' requires options.order to be an array of string arrays`);
   });
 });
 

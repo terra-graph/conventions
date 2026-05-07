@@ -26,10 +26,16 @@ const addressOf = (graph: AdapterOperations, nodeId: NodeId): string | undefined
 
 const scopeIdOf = (graph: AdapterOperations, nodeId: NodeId): string | undefined => {
   const node = graph.getNodeAttributes(nodeId);
-  return typeof node?.hints?.topology?.scopeId === 'string' ? node.hints.topology.scopeId : undefined;
+  return typeof node?.hints?.topology?.scopeId === 'string'
+    ? node.hints.topology.scopeId
+    : undefined;
 };
 
-const isScopeCompatible = (graph: AdapterOperations, sourceId: NodeId, targetId: NodeId): boolean => {
+const isScopeCompatible = (
+  graph: AdapterOperations,
+  sourceId: NodeId,
+  targetId: NodeId,
+): boolean => {
   const sourceScopeId = scopeIdOf(graph, sourceId);
   const targetScopeId = scopeIdOf(graph, targetId);
   if (sourceScopeId && targetScopeId && sourceScopeId !== targetScopeId) {
@@ -101,7 +107,9 @@ class MaterializeDirectAlbRoutes extends NodeRule {
         }
       }
 
-      return [...reachableTargetIds].sort((left, right) => String(left).localeCompare(String(right)));
+      return [...reachableTargetIds].sort((left, right) =>
+        String(left).localeCompare(String(right)),
+      );
     };
 
     const localTargetIds = collectReachableTargetIds([nodeId]).filter((targetId) =>

@@ -25,7 +25,13 @@ const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
   ) {
     throw new Error('Runtime provider missing expected registries');
   }
-  return { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles };
+  return {
+    supportedAdapterOperationsRegistry,
+    plugins,
+    namedRules,
+    namedRuleSets,
+    profiles,
+  };
 };
 
 describe('aws provider', () => {

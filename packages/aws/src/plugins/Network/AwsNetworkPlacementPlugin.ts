@@ -11,8 +11,8 @@ import {
   edgeIdFrom,
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
-import { ApplyAwsNetworkCleanup } from './VpcEnrichers/Visibility/index.js';
 import { resolveAwsSubnetContentSlot } from './VpcEnrichers/ContentSlots/index.js';
+import { ApplyAwsNetworkCleanup } from './VpcEnrichers/Visibility/index.js';
 import {
   type AwsNetworkPlacementPluginOptions,
   type PlacementContext,
@@ -536,8 +536,9 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
           const existingAdditionalReplicaCount = sortedSubnetKeys
             .slice(1)
-            .filter((subnetKey) => graph.getNodeAttributes(buildReplicaNodeId(currentNodeId, subnetKey)))
-            .length;
+            .filter((subnetKey) =>
+              graph.getNodeAttributes(buildReplicaNodeId(currentNodeId, subnetKey)),
+            ).length;
 
           if (!hadClonePlan && existingAdditionalReplicaCount < sortedSubnetKeys.length - 1) {
             const subnetScopeIds: Record<string, string> = {};
@@ -569,7 +570,8 @@ class ApplyAwsNetworkPlacementHints extends NodeRule {
 
           return (
             hasPlacementChanged() ||
-            clonePlans.some((clonePlan) => clonePlan.sourceNodeId === currentNodeId) !== hadClonePlan
+            clonePlans.some((clonePlan) => clonePlan.sourceNodeId === currentNodeId) !==
+              hadClonePlan
           );
         }
 

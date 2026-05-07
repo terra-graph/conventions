@@ -225,11 +225,15 @@ describe('EcsPlacementEnricher', () => {
         return undefined;
       },
       predecessors: () => [missingNeighborId, irrelevantNeighborId, mismatchedServiceId],
-      successors: (nodeId: string) => (nodeId === mismatchedServiceId ? [otherTaskDefinitionId] : []),
+      successors: (nodeId: string) =>
+        nodeId === mismatchedServiceId ? [otherTaskDefinitionId] : [],
     } as unknown as AdapterOperations;
 
     const context = buildContext(graph);
-    context.groupNameToNodeId.set('ecs.task_definition', new Map([['other:1', otherTaskDefinitionId]]));
+    context.groupNameToNodeId.set(
+      'ecs.task_definition',
+      new Map([['other:1', otherTaskDefinitionId]]),
+    );
 
     const subnetKeys = new Set<string>();
     const controls: { suppressPlacement?: boolean } = {};
@@ -381,7 +385,10 @@ describe('EcsPlacementEnricher', () => {
     } as unknown as AdapterOperations;
 
     const context = buildContext(graph);
-    context.groupNameToNodeId.set('ecs.task_definition', new Map([['missing:1', unresolvedTaskDefinitionId]]));
+    context.groupNameToNodeId.set(
+      'ecs.task_definition',
+      new Map([['missing:1', unresolvedTaskDefinitionId]]),
+    );
 
     const noRefControls: { suppressPlacement?: boolean } = {};
     EcsPlacementEnricher.apply({

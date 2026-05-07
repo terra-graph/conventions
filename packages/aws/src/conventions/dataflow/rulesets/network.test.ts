@@ -174,17 +174,19 @@ describe('networkSemanticsRuleSet', () => {
       ],
     });
 
-    expect(updated.getEdgeAttributes(asEdgeId('association-route-table'))?.hints?.semantic?.semantic).toBe(
-      'routes',
-    );
+    expect(
+      updated.getEdgeAttributes(asEdgeId('association-route-table'))?.hints?.semantic?.semantic,
+    ).toBe('routes');
     expect(updated.edgeSource(asEdgeId('route-igw-route-table'))).toBe(routeTableId);
     expect(updated.edgeTarget(asEdgeId('route-igw-route-table'))).toBe(routeToIgwId);
-    expect(updated.getEdgeAttributes(asEdgeId('route-igw-route-table'))?.hints?.semantic?.semantic).toBe(
-      'routes',
-    );
+    expect(
+      updated.getEdgeAttributes(asEdgeId('route-igw-route-table'))?.hints?.semantic?.semantic,
+    ).toBe('routes');
     expect(updated.edgeSource(asEdgeId('route-nat-route-table'))).toBe(routeTableId);
     expect(updated.edgeTarget(asEdgeId('route-nat-route-table'))).toBe(routeToNatId);
-    expect(updated.getEdgeAttributes(asEdgeId('route-nat'))?.hints?.semantic?.semantic).toBe('routes');
+    expect(updated.getEdgeAttributes(asEdgeId('route-nat'))?.hints?.semantic?.semantic).toBe(
+      'routes',
+    );
     expect(updated.getEdgeAttributes(asEdgeId('route-endpoint'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
@@ -291,9 +293,7 @@ describe('networkSemanticsRuleSet', () => {
 
     expect(updated.edgeSource(edgeId)).toBe(securityGroupId);
     expect(updated.edgeTarget(edgeId)).toBe(rdsClusterId);
-    expect(updated.getEdgeAttributes(edgeId)?.hints?.semantic?.semantic).toBe(
-      'authorizes',
-    );
+    expect(updated.getEdgeAttributes(edgeId)?.hints?.semantic?.semantic).toBe('authorizes');
   });
 
   it('should not mark structural security group edges as authorizes', () => {
@@ -349,7 +349,9 @@ describe('networkSemanticsRuleSet', () => {
       ],
     });
 
-    expect(updated.getEdgeAttributes(asEdgeId('sg-vpc'))?.hints?.semantic?.semantic).toBeUndefined();
+    expect(
+      updated.getEdgeAttributes(asEdgeId('sg-vpc'))?.hints?.semantic?.semantic,
+    ).toBeUndefined();
     expect(updated.getEdgeAttributes(asEdgeId('sg-sg'))?.hints?.semantic?.semantic).toBeUndefined();
   });
 });

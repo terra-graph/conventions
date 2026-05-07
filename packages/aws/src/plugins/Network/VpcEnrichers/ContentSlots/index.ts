@@ -49,9 +49,7 @@ export const resolveAwsSubnetContentSlot = (
     return undefined;
   }
 
-  const matchedRule = SUBNET_CONTENT_SLOT_RULES.find((rule) =>
-    rule.test.test(resource),
-  );
+  const matchedRule = SUBNET_CONTENT_SLOT_RULES.find((rule) => rule.test.test(resource));
   if (matchedRule) {
     return {
       slotKey: matchedRule.slotKey,

@@ -26,9 +26,7 @@ export class LayoutFlowOrder extends NodeRule {
 
   constructor(config: NodeRuleConfig) {
     if (config.options === undefined) {
-      throw new Error(
-        `Rule '${LayoutFlowOrder.name}' requires options in config`,
-      );
+      throw new Error(`Rule '${LayoutFlowOrder.name}' requires options in config`);
     }
     super(config);
     this.options = this.parseOptions(config.options);
@@ -93,9 +91,7 @@ export class LayoutFlowOrder extends NodeRule {
 
   private parseOptions(input: unknown): LayoutFlowOrderOptions {
     if (!isRecord(input)) {
-      throw new Error(
-        `Rule '${LayoutFlowOrder.name}' requires options to be an object`,
-      );
+      throw new Error(`Rule '${LayoutFlowOrder.name}' requires options to be an object`);
     }
 
     const { flowOrder, order, orderPriority, step } = input;
@@ -116,9 +112,7 @@ export class LayoutFlowOrder extends NodeRule {
       const isValidOrder =
         Array.isArray(order) &&
         order.every(
-          (chain) =>
-            Array.isArray(chain) &&
-            chain.every((entry) => typeof entry === 'string'),
+          (chain) => Array.isArray(chain) && chain.every((entry) => typeof entry === 'string'),
         );
       if (!isValidOrder) {
         throw new Error(

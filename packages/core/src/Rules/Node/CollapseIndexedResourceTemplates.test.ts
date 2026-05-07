@@ -18,7 +18,10 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
         [template]: {
           id: template,
           label: 'template',
-          terraform: { kind: 'resource', address: 'module.fn.aws_lambda_function.this' },
+          terraform: {
+            kind: 'resource',
+            address: 'module.fn.aws_lambda_function.this',
+          },
         },
       },
       edges: [],
@@ -130,12 +133,20 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
         [target]: {
           id: target,
           label: 'target',
-          terraform: { kind: 'resource', address: 'aws_lambda_permission.invoke' },
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_permission.invoke',
+          },
         },
       },
       edges: [
         { id: asEdgeId('edge-in'), from: source, to: template, attributes: {} },
-        { id: asEdgeId('edge-out'), from: template, to: target, attributes: {} },
+        {
+          id: asEdgeId('edge-out'),
+          from: template,
+          to: target,
+          attributes: {},
+        },
       ],
     };
 
@@ -255,7 +266,10 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
         [target]: {
           id: target,
           label: 'target',
-          terraform: { kind: 'resource', address: 'aws_lambda_permission.invoke' },
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_permission.invoke',
+          },
         },
       },
       edges: [
@@ -372,8 +386,18 @@ describe('CollapseIndexedResourceTemplates.apply', () => {
         },
       },
       edges: [
-        { id: asEdgeId('edge-ext-template'), from: external, to: template, attributes: {} },
-        { id: asEdgeId('edge-template-ext'), from: template, to: external, attributes: {} },
+        {
+          id: asEdgeId('edge-ext-template'),
+          from: external,
+          to: template,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('edge-template-ext'),
+          from: template,
+          to: external,
+          attributes: {},
+        },
       ],
     };
 

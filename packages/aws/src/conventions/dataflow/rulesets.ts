@@ -70,7 +70,12 @@ export default new NamedRuleSetRegistry({
       new RemoveNode({
         node: {
           and: [
-            { attr: { key: 'terraform.resource', eq: 'aws_lambda_event_source_mapping' } },
+            {
+              attr: {
+                key: 'terraform.resource',
+                eq: 'aws_lambda_event_source_mapping',
+              },
+            },
             { not: { edge: { in: { any: true } } } },
           ],
         },

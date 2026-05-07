@@ -37,9 +37,10 @@ const resolveTaskDefinitionNodeId = (
   values: Record<string, unknown>,
   context: Parameters<Exclude<PlacementEnricher['apply'], undefined>>[0]['context'],
 ): NodeId | undefined => {
-  const neighbors = [...context.graph.predecessors(nodeId), ...context.graph.successors(nodeId)].sort(
-    (left, right) => String(left).localeCompare(String(right)),
-  );
+  const neighbors = [
+    ...context.graph.predecessors(nodeId),
+    ...context.graph.successors(nodeId),
+  ].sort((left, right) => String(left).localeCompare(String(right)));
 
   for (const neighborId of neighbors) {
     const neighbor = context.graph.getNodeAttributes(neighborId);
@@ -86,9 +87,9 @@ const addConfiguredSubnets = (
       [
         ...toStringArray((networkConfiguration as Record<string, unknown>).subnet_ids),
         ...toStringArray((networkConfiguration as Record<string, unknown>).subnets),
-        ...[
-          toStringValue((networkConfiguration as Record<string, unknown>).subnet_id),
-        ].filter((entry): entry is string => entry !== undefined),
+        ...[toStringValue((networkConfiguration as Record<string, unknown>).subnet_id)].filter(
+          (entry): entry is string => entry !== undefined,
+        ),
       ],
       context,
       subnetKeys,
@@ -117,7 +118,10 @@ const addNeighborDefinedSubnets = (
       continue;
     }
 
-    const neighbors = [...context.graph.predecessors(current.nodeId), ...context.graph.successors(current.nodeId)]
+    const neighbors = [
+      ...context.graph.predecessors(current.nodeId),
+      ...context.graph.successors(current.nodeId),
+    ]
       .filter((neighborId) => !visited.has(neighborId))
       .sort((left, right) => String(left).localeCompare(String(right)));
 
@@ -171,8 +175,10 @@ const addPlannedNeighborSubnets = (
   const explicitVpcKey = explicitVpcId
     ? (context.vpcIdentifierToKey.get(explicitVpcId) ?? explicitVpcId)
     : undefined;
-  const neighbors = [...context.graph.predecessors(startNodeId), ...context.graph.successors(startNodeId)]
-    .sort((left, right) => String(left).localeCompare(String(right)));
+  const neighbors = [
+    ...context.graph.predecessors(startNodeId),
+    ...context.graph.successors(startNodeId),
+  ].sort((left, right) => String(left).localeCompare(String(right)));
 
   for (const neighborId of neighbors) {
     for (const subnetKey of plannedSubnetKeysByNodeId.get(neighborId) ?? []) {
@@ -199,7 +205,9 @@ export const EcsPlacementEnricher: PlacementEnricher = {
     const taskDefinitions = getOrCreateGroupNodeMap(context, ECS_TASK_DEFINITION_GROUP_KIND);
     const family = toStringValue(values.family);
     const revision =
-      typeof values.revision === 'number' ? String(values.revision) : toStringValue(values.revision);
+      typeof values.revision === 'number'
+        ? String(values.revision)
+        : toStringValue(values.revision);
 
     indexTaskDefinitionIdentifier(taskDefinitions, toStringValue(values.arn), nodeId);
     indexTaskDefinitionIdentifier(taskDefinitions, family, nodeId);
@@ -220,9 +228,10 @@ export const EcsPlacementEnricher: PlacementEnricher = {
         return;
       }
 
-      const neighbors = [...context.graph.predecessors(nodeId), ...context.graph.successors(nodeId)].sort(
-        (left, right) => String(left).localeCompare(String(right)),
-      );
+      const neighbors = [
+        ...context.graph.predecessors(nodeId),
+        ...context.graph.successors(nodeId),
+      ].sort((left, right) => String(left).localeCompare(String(right)));
 
       for (const neighborId of neighbors) {
         const neighbor = context.graph.getNodeAttributes(neighborId);
@@ -292,9 +301,10 @@ export const EcsPlacementEnricher: PlacementEnricher = {
 
     const resource = toStringValue(node.terraform?.resource);
     if (resource === ECS_TASK_DEFINITION_RESOURCE) {
-      const neighbors = [...context.graph.predecessors(nodeId), ...context.graph.successors(nodeId)].sort(
-        (left, right) => String(left).localeCompare(String(right)),
-      );
+      const neighbors = [
+        ...context.graph.predecessors(nodeId),
+        ...context.graph.successors(nodeId),
+      ].sort((left, right) => String(left).localeCompare(String(right)));
 
       for (const neighborId of neighbors) {
         const neighbor = context.graph.getNodeAttributes(neighborId);

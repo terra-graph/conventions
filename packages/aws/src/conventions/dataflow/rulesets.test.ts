@@ -24,7 +24,9 @@ describe('dataflow convention rule sets', () => {
       conventionName(Convention.DataFlow, ruleSetName('semantics')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
-    const semanticValues = new Set<string>(Object.values(AwsEdgeSemantics).map(({ semantic }) => semantic));
+    const semanticValues = new Set<string>(
+      Object.values(AwsEdgeSemantics).map(({ semantic }) => semantic),
+    );
 
     expect(phases).toHaveLength(1);
     const phaseRuleIds = phases[0].map((rule) => rule.serialize().id);

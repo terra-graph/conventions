@@ -1,11 +1,6 @@
 import { DotAdapter, Profile } from '@terra-graph/core';
 import type { DotRendererOptions } from '@terra-graph/core';
-import {
-  conventionName,
-  profileName,
-  ruleName,
-  ruleSetName,
-} from '../../../namespaces.js';
+import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
 import { Convention } from '../../index.js';
 import base from './base.js';
 

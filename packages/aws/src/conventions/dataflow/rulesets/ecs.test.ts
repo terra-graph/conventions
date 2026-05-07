@@ -120,15 +120,15 @@ describe('ecs dataflow rulesets', () => {
       ],
     });
 
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-task-definition')).hints?.semantic?.semantic).toBe(
-      'invokes',
-    );
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-topic')).hints?.semantic?.semantic).toBe(
-      'publishes',
-    );
-    expect(adapter.getEdgeAttributes(asEdgeId('edge-service-table')).hints?.semantic?.semantic).toBe(
-      'accesses',
-    );
+    expect(
+      adapter.getEdgeAttributes(asEdgeId('edge-service-task-definition')).hints?.semantic?.semantic,
+    ).toBe('invokes');
+    expect(
+      adapter.getEdgeAttributes(asEdgeId('edge-service-topic')).hints?.semantic?.semantic,
+    ).toBe('publishes');
+    expect(
+      adapter.getEdgeAttributes(asEdgeId('edge-service-table')).hints?.semantic?.semantic,
+    ).toBe('accesses');
   });
 
   it('shoud remove ecs cluster nodes during cleanup and keep task definitions', () => {

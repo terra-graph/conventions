@@ -4,5 +4,4 @@ export const AwsEdgeSemantics = {
   ...DefaultEdgeSemantics,
 } as const;
 
-export type AwsEdgeSemantic =
-  (typeof AwsEdgeSemantics)[keyof typeof AwsEdgeSemantics];
+export type AwsEdgeSemantic = (typeof AwsEdgeSemantics)[keyof typeof AwsEdgeSemantics];

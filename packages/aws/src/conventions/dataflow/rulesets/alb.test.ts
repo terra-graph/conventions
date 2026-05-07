@@ -118,16 +118,18 @@ describe('albSemanticsRuleSet', () => {
       albSemanticsRuleSet.resolvePhases()[0] ?? [],
     );
 
-    expect(updated.getEdgeAttributes(asEdgeId('lb-listener'))?.hints?.semantic?.semantic).toBe('routes');
-    expect(updated.getEdgeAttributes(asEdgeId('listener-target-group'))?.hints?.semantic?.semantic).toBe(
+    expect(updated.getEdgeAttributes(asEdgeId('lb-listener'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
+    expect(
+      updated.getEdgeAttributes(asEdgeId('listener-target-group'))?.hints?.semantic?.semantic,
+    ).toBe('routes');
     expect(updated.getEdgeAttributes(asEdgeId('listener-service'))?.hints?.semantic?.semantic).toBe(
       'routes',
     );
-    expect(updated.getEdgeAttributes(asEdgeId('target-group-service'))?.hints?.semantic?.semantic).toBe(
-      'routes',
-    );
+    expect(
+      updated.getEdgeAttributes(asEdgeId('target-group-service'))?.hints?.semantic?.semantic,
+    ).toBe('routes');
   });
 
   it('shoud route load balancers directly to ecs services after cleanup collapse', () => {
@@ -302,7 +304,9 @@ describe('albCleanupRuleSet', () => {
       .outEdges(loadBalancerId)
       .find((edgeId) => updated.edgeTarget(edgeId) === ecsServiceId);
     expect(directEdgeId).toBeDefined();
-    expect(updated.getEdgeAttributes(directEdgeId!)?.hints?.semantic?.semantic).toBe('routes');
+    const directEdge =
+      directEdgeId === undefined ? undefined : updated.getEdgeAttributes(directEdgeId);
+    expect(directEdge?.hints?.semantic?.semantic).toBe('routes');
   });
 
   it('shoud collapse cloned listener and target group chains without cross-subnet lb routes', () => {
@@ -323,7 +327,12 @@ describe('albCleanupRuleSet', () => {
         nodes: {
           [loadBalancerAId]: {
             id: loadBalancerAId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
           },
           [listenerAId]: {
             id: listenerAId,
@@ -354,7 +363,12 @@ describe('albCleanupRuleSet', () => {
           },
           [loadBalancerBId]: {
             id: loadBalancerBId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
           },
           [listenerBId]: {
             id: listenerBId,
@@ -385,12 +399,42 @@ describe('albCleanupRuleSet', () => {
           },
         },
         edges: [
-          { id: asEdgeId('lb-a-listener-a'), from: loadBalancerAId, to: listenerAId, attributes: {} },
-          { id: asEdgeId('listener-a-tg-a'), from: listenerAId, to: targetGroupAId, attributes: {} },
-          { id: asEdgeId('tg-a-service-a'), from: targetGroupAId, to: serviceAId, attributes: {} },
-          { id: asEdgeId('lb-b-listener-b'), from: loadBalancerBId, to: listenerBId, attributes: {} },
-          { id: asEdgeId('listener-b-tg-b'), from: listenerBId, to: targetGroupBId, attributes: {} },
-          { id: asEdgeId('tg-b-service-b'), from: targetGroupBId, to: serviceBId, attributes: {} },
+          {
+            id: asEdgeId('lb-a-listener-a'),
+            from: loadBalancerAId,
+            to: listenerAId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('listener-a-tg-a'),
+            from: listenerAId,
+            to: targetGroupAId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('tg-a-service-a'),
+            from: targetGroupAId,
+            to: serviceAId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('lb-b-listener-b'),
+            from: loadBalancerBId,
+            to: listenerBId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('listener-b-tg-b'),
+            from: listenerBId,
+            to: targetGroupBId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('tg-b-service-b'),
+            from: targetGroupBId,
+            to: serviceBId,
+            attributes: {},
+          },
         ],
       },
       albCleanupRuleSet.resolvePhases()[0] ?? [],
@@ -401,10 +445,18 @@ describe('albCleanupRuleSet', () => {
     expect(updated.getNodeAttributes(listenerBId)).toBeUndefined();
     expect(updated.getNodeAttributes(targetGroupBId)).toBeUndefined();
 
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(true);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(true);
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(false);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(false);
   });
 
   it('shoud not cross-product shared intermediary nodes across different subnet scopes', () => {
@@ -421,13 +473,27 @@ describe('albCleanupRuleSet', () => {
         nodes: {
           [loadBalancerAId]: {
             id: loadBalancerAId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [loadBalancerBId]: {
             id: loadBalancerBId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' } },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' },
+            },
           },
           [targetGroupId]: {
             id: targetGroupId,
@@ -446,7 +512,9 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_ecs_service',
               name: 'app',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [serviceBId]: {
             id: serviceBId,
@@ -456,24 +524,54 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_ecs_service',
               name: 'app',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' },
+            },
           },
         },
         edges: [
-          { id: asEdgeId('lb-a-tg'), from: loadBalancerAId, to: targetGroupId, attributes: {} },
-          { id: asEdgeId('lb-b-tg'), from: loadBalancerBId, to: targetGroupId, attributes: {} },
-          { id: asEdgeId('tg-service-a'), from: targetGroupId, to: serviceAId, attributes: {} },
-          { id: asEdgeId('tg-service-b'), from: targetGroupId, to: serviceBId, attributes: {} },
+          {
+            id: asEdgeId('lb-a-tg'),
+            from: loadBalancerAId,
+            to: targetGroupId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('lb-b-tg'),
+            from: loadBalancerBId,
+            to: targetGroupId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('tg-service-a'),
+            from: targetGroupId,
+            to: serviceAId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('tg-service-b'),
+            from: targetGroupId,
+            to: serviceBId,
+            attributes: {},
+          },
         ],
       },
       albCleanupRuleSet.resolvePhases()[0] ?? [],
     );
 
     expect(updated.getNodeAttributes(targetGroupId)).toBeUndefined();
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(true);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(true);
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(false);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(false);
   });
 
   it('shoud materialize replica lb routes from canonical alb paths even when only the original intermediary chain exists', () => {
@@ -491,13 +589,27 @@ describe('albCleanupRuleSet', () => {
         nodes: {
           [loadBalancerAId]: {
             id: loadBalancerAId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [loadBalancerBId]: {
             id: loadBalancerBId,
-            terraform: { kind: 'resource', address: 'aws_lb.this', resource: 'aws_lb', name: 'this' },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' } },
+            terraform: {
+              kind: 'resource',
+              address: 'aws_lb.this',
+              resource: 'aws_lb',
+              name: 'this',
+            },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' },
+            },
           },
           [listenerId]: {
             id: listenerId,
@@ -507,7 +619,9 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_lb_listener',
               name: 'http',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [targetGroupId]: {
             id: targetGroupId,
@@ -517,7 +631,9 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_lb_target_group',
               name: 'app',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [serviceAId]: {
             id: serviceAId,
@@ -527,7 +643,9 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_ecs_service',
               name: 'app',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2a:subnet:public_a' },
+            },
           },
           [serviceBId]: {
             id: serviceBId,
@@ -537,21 +655,46 @@ describe('albCleanupRuleSet', () => {
               resource: 'aws_ecs_service',
               name: 'app',
             },
-            hints: { topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' } },
+            hints: {
+              topology: { scopeId: 'vpc:this:az:eu-west-2b:subnet:public_b' },
+            },
           },
         },
         edges: [
-          { id: asEdgeId('lb-a-listener'), from: loadBalancerAId, to: listenerId, attributes: {} },
-          { id: asEdgeId('listener-tg'), from: listenerId, to: targetGroupId, attributes: {} },
-          { id: asEdgeId('tg-service-a'), from: targetGroupId, to: serviceAId, attributes: {} },
+          {
+            id: asEdgeId('lb-a-listener'),
+            from: loadBalancerAId,
+            to: listenerId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('listener-tg'),
+            from: listenerId,
+            to: targetGroupId,
+            attributes: {},
+          },
+          {
+            id: asEdgeId('tg-service-a'),
+            from: targetGroupId,
+            to: serviceAId,
+            attributes: {},
+          },
         ],
       },
       albCleanupRuleSet.resolvePhases()[0] ?? [],
     );
 
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(true);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(true);
-    expect(updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId)).toBe(false);
-    expect(updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId)).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(loadBalancerAId).some((edgeId) => updated.edgeTarget(edgeId) === serviceBId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(loadBalancerBId).some((edgeId) => updated.edgeTarget(edgeId) === serviceAId),
+    ).toBe(false);
   });
 });

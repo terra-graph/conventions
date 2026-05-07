@@ -1462,9 +1462,7 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
         .some((edgeId) => withEnricher.edgeTarget(edgeId) === subnetGroupReplicaId),
     ).toBe(true);
     expect(
-      withEnricher
-        .inEdges(replicaId)
-        .some((edgeId) => withEnricher.edgeSource(edgeId) === appId),
+      withEnricher.inEdges(replicaId).some((edgeId) => withEnricher.edgeSource(edgeId) === appId),
     ).toBe(true);
   });
 
@@ -1578,12 +1576,10 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.getNodeAttributes(replicaId)?.hints?.topology?.scopeId).toBe(
       'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
     );
-    expect(updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === appReplicaId)).toBe(
-      true,
-    );
-    const replicaTargets = updated
-      .outEdges(replicaId)
-      .map((edgeId) => updated.edgeTarget(edgeId));
+    expect(
+      updated.inEdges(replicaId).some((edgeId) => updated.edgeSource(edgeId) === appReplicaId),
+    ).toBe(true);
+    const replicaTargets = updated.outEdges(replicaId).map((edgeId) => updated.edgeTarget(edgeId));
     expect(replicaTargets).not.toContain(subnetAId);
     expect(replicaTargets).not.toContain(subnetBId);
     expect(replicaTargets.length).toBeGreaterThan(0);
@@ -1594,8 +1590,12 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
           'vpc:vpc-1:az:eu-west-2b:subnet:subnet-b',
       ),
     ).toBe(true);
-    expect(updated.outEdges(subnetGroupId).some((edgeId) => updated.edgeTarget(edgeId) === replicaId)).toBe(false);
-    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetGroupId)).toBe(false);
+    expect(
+      updated.outEdges(subnetGroupId).some((edgeId) => updated.edgeTarget(edgeId) === replicaId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetGroupId),
+    ).toBe(false);
   });
 
   it('shoud tolerate missing node lookups and preserve idempotence on reruns', () => {
@@ -3197,7 +3197,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(
       updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === securityGroupId),
     ).toBe(true);
-    expect(updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === vpcId)).toBe(false);
+    expect(updated.outEdges(appId).some((edgeId) => updated.edgeTarget(edgeId) === vpcId)).toBe(
+      false,
+    );
   });
 
   it('shoud keep architecture-level resources but suppress additional route resources in minimal mode', () => {
@@ -3395,12 +3397,12 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(
       false,
     );
-    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetBId)).toBe(
-      true,
-    );
-    expect(updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetAId)).toBe(
-      false,
-    );
+    expect(
+      updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetBId),
+    ).toBe(true);
+    expect(
+      updated.outEdges(replicaId).some((edgeId) => updated.edgeTarget(edgeId) === subnetAId),
+    ).toBe(false);
   });
 
   it('shoud remap cloned edges to same-subnet replicas instead of leaving cross-subnet links', () => {
@@ -3524,15 +3526,15 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     );
 
     expect(updated.outEdges(sgId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(true);
-    expect(updated.outEdges(sgId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId)).toBe(
-      false,
-    );
-    expect(updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId)).toBe(
-      false,
-    );
-    expect(updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId)).toBe(
-      true,
-    );
+    expect(
+      updated.outEdges(sgId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbId),
+    ).toBe(false);
+    expect(
+      updated.outEdges(sgReplicaId).some((edgeId) => updated.edgeTarget(edgeId) === lbReplicaId),
+    ).toBe(true);
   });
 
   it('shoud skip replaying stale replica endpoints that belong to a different subnet on reruns', () => {
@@ -3545,7 +3547,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const subnetAId = asNodeId('resource.aws_subnet.public_a');
     const subnetBId = asNodeId('resource.aws_subnet.public_b');
     const lbId = asNodeId('resource.aws_lb.this');
-    const staleReplicaSourceId = asNodeId('resource.aws_security_group.alb:replica:subnet:subnet-c');
+    const staleReplicaSourceId = asNodeId(
+      'resource.aws_security_group.alb:replica:subnet:subnet-c',
+    );
 
     const adapter = buildAdapter({
       schemaVersion: TG_SCHEMA_VERSION,
@@ -3663,7 +3667,9 @@ describe('AwsNetworkPlacementPlugin.ApplyAwsNetworkPlacementHints', () => {
     const subnetAId = asNodeId('resource.aws_subnet.public_a');
     const subnetBId = asNodeId('resource.aws_subnet.public_b');
     const lbId = asNodeId('resource.aws_lb.this');
-    const existingReplicaSourceId = asNodeId('resource.aws_security_group.alb:replica:subnet:subnet-b');
+    const existingReplicaSourceId = asNodeId(
+      'resource.aws_security_group.alb:replica:subnet:subnet-b',
+    );
 
     const adapter = buildAdapter({
       schemaVersion: TG_SCHEMA_VERSION,
