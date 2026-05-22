@@ -40,56 +40,18 @@ export default new Profile(conventionDataFlowBaseProfileName, {
       ],
     },
     {
-      phase: 'normalize',
-      rules: [
-        {
-          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('normalize')),
-        },
-      ],
-    },
-    {
-      phase: 'semantics',
-      rules: [
-        {
-          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')),
-        },
-      ],
-    },
-    {
       phase: 'main',
       rules: [
-        // TODO: ConvertNodeToEdge probably should apply some hints to the edge (converted node etc)
-        // new ConvertNodeToEdge({
-        //   node: {
-        //     attr: {
-        //       key: 'terraform.resource',
-        //       in: [
-        //         'aws_lambda_event_source_mapping',
-        //         'aws_cloudwatch_event_target',
-        //         'aws_cloudwatch_log_destination',
-        //       ],
-        //     },
-        //   },
-        // }),
-      ],
-    },
-    {
-      phase: 'cleanup',
-      rules: [
         {
-          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('main')),
         },
       ],
     },
     {
-      phase: 'cleanup',
+      phase: 'final',
       rules: [
-        // Re-run semantics in a separate later cleanup phase because cleanup rules can create
-        // redirected edges (for example ALB -> ECS after listener/target-group removal). A
-        // single resolver phase only visits the node ids captured at phase start, so this must
-        // be its own phase step rather than another ruleset entry in the same cleanup step.
         {
-          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('semantics')),
+          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('final')),
         },
       ],
     },

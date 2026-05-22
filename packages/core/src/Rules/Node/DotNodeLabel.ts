@@ -40,19 +40,32 @@ export class DotNodeLabel extends NodeRule {
 
   private makeHtmlLabel(node: TgNodeAttributes, nodeId: NodeId): string {
     const tgNodeLabel = new TgNodeLabel({ id: nodeId, ...node });
-    const [resourceType, resourceName] = tgNodeLabel.getLabel().split('.');
-    if (!(resourceType && resourceName)) {
-      return tgNodeLabel.getLabel();
+    const label = tgNodeLabel.getLabel();
+    if (node.projection && node.hints?.layout?.text2) {
+      return this.makeStructuredLabel(label, node.hints.layout.text2, node.hints.layout.image);
     }
 
-    if (!node.hints?.layout?.image) {
+    const [resourceType, resourceName] = label.split('.');
+    if (!(resourceType && resourceName)) {
+      return label;
+    }
+
+    return this.makeStructuredLabel(
+      node.hints?.layout?.text1 ?? resourceName,
+      node.hints?.layout?.text2 ?? resourceType,
+      node.hints?.layout?.image,
+    );
+  }
+
+  private makeStructuredLabel(primaryText: string, secondaryText: string, image?: string): string {
+    if (!image) {
       return `
       <<table align="left" border="0" cellpadding="0" cellspacing="0" cellborder="0">
         <tr>
-          <td align="left">${node.hints?.layout?.text1 ?? resourceName}</td>
+          <td align="left">${primaryText}</td>
         </tr>
         <tr>
-          <td align="left"><font point-size="10" color="#999999">${node.hints?.layout?.text2 ?? resourceType}</font></td>
+          <td align="left"><font point-size="10" color="#999999">${secondaryText}</font></td>
         </tr>
       </table>>`;
     }
@@ -63,7 +76,7 @@ export class DotNodeLabel extends NodeRule {
           <td align="center">
             <table border="0" cellpadding="0" cellspacing="0" cellborder="0">
               <tr>
-                <td width="${DotNodeLabel.imageCellSizePoints}" height="${DotNodeLabel.imageCellSizePoints}" fixedsize="true"><IMG SCALE="TRUE" SRC="${node.hints.layout.image}"/></td>
+                <td width="${DotNodeLabel.imageCellSizePoints}" height="${DotNodeLabel.imageCellSizePoints}" fixedsize="true"><IMG SCALE="TRUE" SRC="${image}"/></td>
               </tr>
             </table>
           </td>
@@ -72,10 +85,10 @@ export class DotNodeLabel extends NodeRule {
           <td align="left">
             <table align="left" border="0" cellpadding="0" cellspacing="0" cellborder="0">
               <tr>
-                <td align="left">${node.hints?.layout?.text1 ?? resourceName}</td>
+                <td align="left">${primaryText}</td>
               </tr>
               <tr>
-                <td align="left"><font point-size="10" color="#999999">${node.hints?.layout?.text2 ?? resourceType}</font></td>
+                <td align="left"><font point-size="10" color="#999999">${secondaryText}</font></td>
               </tr>
             </table>
           </td>

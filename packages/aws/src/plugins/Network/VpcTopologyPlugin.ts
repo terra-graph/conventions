@@ -383,7 +383,7 @@ export class VpcTopologyPlugin extends GraphPlugin<VpcTopologyPluginOptions> {
     return {
       phases: [
         {
-          phase: 'normalize',
+          phase: 'main',
           rules: [
             new ApplyVpcTopologyHints({
               node: {

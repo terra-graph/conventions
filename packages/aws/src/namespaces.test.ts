@@ -18,9 +18,9 @@ describe('namespaces helpers', () => {
   });
 
   it('shoud compose convention-aware names', () => {
-    expect(conventionName(Convention.DataFlow, 'dot')).toBe('convention:dataflow:dot');
+    expect(conventionName(Convention.DataFlow, 'dot')).toBe('dot.dataflow');
     expect(conventionName(Convention.DataFlow, ruleName('legend'))).toBe(
-      'convention:dataflow:@terra-graph/conventions-aws:rule:legend',
+      '@terra-graph/conventions-aws:rule:legend.dataflow',
     );
   });
 });

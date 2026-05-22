@@ -53,7 +53,7 @@ const applyRuleAcrossNodes = (rule: BaseRule, adapter: AdapterOperations): Adapt
 };
 
 describe('VpcTopologyPlugin.build', () => {
-  it('shoud build one normalize phase rule', () => {
+  it('shoud build one main phase rule', () => {
     const plugin = new VpcTopologyPlugin();
     const result = plugin.build({
       options: {},
@@ -63,7 +63,7 @@ describe('VpcTopologyPlugin.build', () => {
     const rules = buildRules();
 
     expect(result.phases).toHaveLength(1);
-    expect(result.phases?.[0]?.phase).toBe('normalize');
+    expect(result.phases?.[0]?.phase).toBe('main');
     expect(rules).toHaveLength(1);
     expect(rules[0]?.serialize().id).toBe('ApplyVpcTopologyHints');
   });

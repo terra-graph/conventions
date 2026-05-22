@@ -5,23 +5,21 @@ import dataFlowConventionRules from './rules.js';
 import dataFlowConventionRuleSet from './rulesets.js';
 
 describe('dataflow convention rule sets', () => {
-  it('shoud register the dataflow semantics ruleset', () => {
+  it('shoud register the dataflow phase rule sets', () => {
     const names = dataFlowConventionRuleSet.names();
-    expect(names).toHaveLength(5);
+    expect(names).toHaveLength(3);
     expect(names).toEqual(
       expect.arrayContaining([
         conventionName(Convention.DataFlow, ruleSetName('pre')),
-        conventionName(Convention.DataFlow, ruleSetName('normalize')),
-        conventionName(Convention.DataFlow, ruleSetName('cleanup')),
         conventionName(Convention.DataFlow, ruleSetName('main')),
-        conventionName(Convention.DataFlow, ruleSetName('semantics')),
+        conventionName(Convention.DataFlow, ruleSetName('final')),
       ]),
     );
   });
 
-  it('shoud expand all semantic rules from the semantics rule set', () => {
+  it('shoud expand all semantic rules from the main rule set', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const semanticValues = new Set<string>(
@@ -30,7 +28,7 @@ describe('dataflow convention rule sets', () => {
 
     expect(phases).toHaveLength(1);
     const phaseRuleIds = phases[0].map((rule) => rule.serialize().id);
-    expect(phaseRuleIds).toContain('EdgeSemanticLegend');
+    expect(phaseRuleIds).not.toContain('EdgeSemanticLegend');
     expect(phaseRuleIds.filter((id) => id === 'EdgeSemantic').length).toBeGreaterThan(13);
 
     const semanticNames = phases[0]
@@ -48,8 +46,17 @@ describe('dataflow convention rule sets', () => {
       expect(semantic).toBeDefined();
       expect(semanticValues.has(semantic as string)).toBe(true);
     }
+  });
 
-    const semanticLegendRule = phases[0].find(
+  it('shoud expose the semantic legend from the final rule set', () => {
+    const ruleSet = dataFlowConventionRuleSet.resolve(
+      conventionName(Convention.DataFlow, ruleSetName('final')),
+    );
+    const phases = ruleSet.resolvePhases(dataFlowConventionRules);
+    const semanticValues = new Set<string>(
+      Object.values(AwsEdgeSemantics).map(({ semantic }) => semantic),
+    );
+    const semanticLegendRule = phases[0]?.find(
       (rule) => rule.serialize().id === 'EdgeSemanticLegend',
     );
     expect(semanticLegendRule).toBeDefined();
@@ -64,38 +71,15 @@ describe('dataflow convention rule sets', () => {
     }
   });
 
-  it('shoud include the network semantics rules and remove the old broad api gateway routing matcher', () => {
+  it('shoud include the network semantics rules and remove canonical alb route semantics', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const serializedRules = phases[0].map((rule) => rule.serialize());
 
     expect(serializedRules).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          id: 'EdgeSemantic',
-          config: expect.objectContaining({
-            options: expect.objectContaining({
-              semantic: AwsEdgeSemantics.Routes,
-              enforceDirection: true,
-            }),
-            edge: expect.objectContaining({
-              from: expect.objectContaining({
-                attr: expect.objectContaining({
-                  key: 'terraform.resource',
-                  in: ['aws_lb'],
-                }),
-              }),
-              to: expect.objectContaining({
-                attr: expect.objectContaining({
-                  key: 'terraform.resource',
-                  in: ['aws_lb_listener'],
-                }),
-              }),
-            }),
-          }),
-        }),
         expect.objectContaining({
           id: 'EdgeSemantic',
           config: expect.objectContaining({
@@ -131,12 +115,7 @@ describe('dataflow convention rule sets', () => {
               from: expect.objectContaining({
                 attr: expect.objectContaining({
                   key: 'terraform.resource',
-                  in: [
-                    'aws_lb',
-                    'aws_lb_listener',
-                    'aws_cloudfront_distribution',
-                    'aws_route53_record',
-                  ],
+                  in: ['aws_lb'],
                 }),
               }),
             }),
@@ -148,7 +127,7 @@ describe('dataflow convention rule sets', () => {
 
   it('shoud include alb cleanup rules for listeners and target groups', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const serializedRules = phases[0].map((rule) => rule.serialize());
@@ -190,11 +169,28 @@ describe('dataflow convention rule sets', () => {
         }),
       ]),
     );
+    expect(serializedRules).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'EdgeSemantic',
+          config: expect.objectContaining({
+            edge: expect.objectContaining({
+              from: expect.objectContaining({
+                attr: expect.objectContaining({
+                  key: 'terraform.resource',
+                  in: ['aws_lb', 'aws_lb_listener', 'aws_lb_target_group'],
+                }),
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
   });
 
   it('shoud include ec2 cleanup rules for launch templates', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const serializedRules = phases[0].map((rule) => rule.serialize());
@@ -218,7 +214,7 @@ describe('dataflow convention rule sets', () => {
 
   it('shoud include ecs cleanup rules for cluster control plane nodes', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('cleanup')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const serializedRules = phases[0].map((rule) => rule.serialize());
@@ -242,7 +238,7 @@ describe('dataflow convention rule sets', () => {
 
   it('shoud enforce direction for IAM authorizes semantics', () => {
     const ruleSet = dataFlowConventionRuleSet.resolve(
-      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+      conventionName(Convention.DataFlow, ruleSetName('main')),
     );
     const phases = ruleSet.resolvePhases(dataFlowConventionRules);
     const serializedRules = phases[0].map((rule) => rule.serialize());
@@ -317,16 +313,16 @@ describe('dataflow convention rule sets', () => {
       const pre = reloadedRuleSets
         .resolve(conventionName(Convention.DataFlow, ruleSetName('pre')))
         .resolvePhases(dataFlowConventionRules);
-      const semantics = reloadedRuleSets
-        .resolve(conventionName(Convention.DataFlow, ruleSetName('semantics')))
+      const main = reloadedRuleSets
+        .resolve(conventionName(Convention.DataFlow, ruleSetName('main')))
         .resolvePhases(dataFlowConventionRules);
-      const cleanup = reloadedRuleSets
-        .resolve(conventionName(Convention.DataFlow, ruleSetName('cleanup')))
+      const final = reloadedRuleSets
+        .resolve(conventionName(Convention.DataFlow, ruleSetName('final')))
         .resolvePhases(dataFlowConventionRules);
 
       expect(pre).toHaveLength(1);
-      expect(semantics).toHaveLength(1);
-      expect(cleanup).toHaveLength(1);
+      expect(main).toHaveLength(1);
+      expect(final).toHaveLength(1);
     } finally {
       jest.dontMock('./rulesets/lambda.js');
       jest.dontMock('./rulesets/alb.js');

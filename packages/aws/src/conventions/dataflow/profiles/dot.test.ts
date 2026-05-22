@@ -19,22 +19,20 @@ import dataFlowConventionRuleSet from '../rulesets.js';
 import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
 
 const baseNamedRules = new NamedRuleRegistry({
-  'core.remove.tfconfig': new RemoveNode({
+  'core.remove.tfconfig': new RemoveNodeAndReconnectEdges({
     node: {
-      or: [
-        {
-          attr: {
-            key: 'terraform.kind',
-            in: ['local', 'var', 'terraform_data'],
-          },
-        },
-        {
-          attr: {
-            key: 'terraform.resource',
-            in: ['null_resource', 'local_file'],
-          },
-        },
-      ],
+      attr: {
+        key: 'terraform.kind',
+        in: ['local', 'var', 'terraform_data'],
+      },
+    },
+  }),
+  'core.remove.tfconfig_artifacts': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.resource',
+        in: ['null_resource', 'local_file'],
+      },
     },
   }),
   'core.reconnect.time_sleep': new RemoveNodeAndReconnectEdges({
@@ -42,6 +40,13 @@ const baseNamedRules = new NamedRuleRegistry({
       attr: {
         key: 'terraform.resource',
         eq: 'time_sleep',
+      },
+    },
+  }),
+  'core.materialize.cardinality_resources': new RemoveNode({
+    node: {
+      nodeId: {
+        eq: '__never__',
       },
     },
   }),
@@ -89,16 +94,13 @@ describe('dataflow dot profile', () => {
 
     expect(serialized.name).toBe(conventionDataFlowDotProfileName);
     expect(serialized.supports).toBe(DotAdapter.name);
-    expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['main']);
+    expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['final']);
 
     const baseProfile = serialized.usesProfiles?.[0];
     expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
       'pre',
-      'normalize',
-      'semantics',
       'main',
-      'cleanup',
-      'cleanup',
+      'final',
     ]);
     expect(baseProfile?.plugins).toEqual([
       { plugin: S3Plugin.id },
@@ -168,7 +170,7 @@ describe('dataflow dot profile', () => {
       ]),
     );
     expect(dataFlowConventionRuleSet.names()).toContain(
-      conventionName(Convention.DataFlow, ruleSetName('semantics')),
+      conventionName(Convention.DataFlow, ruleSetName('final')),
     );
     expect(dataFlowConventionRules.names()).toEqual([]);
   });

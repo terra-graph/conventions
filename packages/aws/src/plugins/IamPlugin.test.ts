@@ -34,11 +34,11 @@ describe('AwsIamGraphPlugin.build', () => {
 
     expect(phases).toHaveLength(5);
     expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
       'main',
       'main',
       'main',
-      'cleanup',
+      'main',
+      'main',
     ]);
     expect(phases[0]?.rules).toHaveLength(9);
     expect(phases[0]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
@@ -123,7 +123,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(4);
-    expect(phases[0]?.phase).toBe('normalize');
+    expect(phases[0]?.phase).toBe('main');
     expect(phases[0]?.rules).toHaveLength(9);
     expect(phases[1]?.phase).toBe('main');
     expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
@@ -157,7 +157,7 @@ describe('AwsIamGraphPlugin.build', () => {
         },
       },
     });
-    expect(phases[3]?.phase).toBe('cleanup');
+    expect(phases[3]?.phase).toBe('main');
     expect(phases[3]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
   });
 
@@ -167,11 +167,11 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(3);
-    expect(phases[0]?.phase).toBe('normalize');
+    expect(phases[0]?.phase).toBe('main');
     expect(phases[0]?.rules).toHaveLength(9);
     expect(phases[1]?.phase).toBe('main');
     expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
-    expect(phases[2]?.phase).toBe('cleanup');
+    expect(phases[2]?.phase).toBe('main');
     expect(phases[2]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
   });
 
@@ -183,12 +183,12 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
       'main',
       'main',
       'main',
       'main',
-      'cleanup',
+      'main',
+      'main',
     ]);
     expect(phases.map((phase) => phase.rules[0]?.id)).toStrictEqual([
       'EdgeReverse',
@@ -218,7 +218,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(4);
-    expect(phases[0]?.phase).toBe('normalize');
+    expect(phases[0]?.phase).toBe('main');
     expect(phases[0]?.rules).toHaveLength(9);
     expect(phases[1]?.phase).toBe('main');
     expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
@@ -264,7 +264,7 @@ describe('AwsIamGraphPlugin.build', () => {
         },
       },
     });
-    expect(phases[3]?.phase).toBe('cleanup');
+    expect(phases[3]?.phase).toBe('main');
     expect(phases[3]?.rules.every((rule) => rule.id === 'EdgeReverse')).toBe(true);
   });
 
@@ -275,12 +275,12 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
       'main',
       'main',
       'main',
       'main',
-      'cleanup',
+      'main',
+      'main',
     ]);
     expect(phases[3]?.rules[0]).toStrictEqual({
       id: 'RemoveNodeAndReconnectEdges',
@@ -405,7 +405,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(3);
-    expect(phases.map((phase) => phase.phase)).toStrictEqual(['normalize', 'main', 'cleanup']);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual(['main', 'main', 'main']);
     expect(phases[1]?.rules).toHaveLength(1);
     expect(phases[1]?.rules[0]?.id).toBe('NodeProperties');
     expect(phases[2]?.rules).toHaveLength(9);
@@ -419,12 +419,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(4);
-    expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
-      'main',
-      'main',
-      'cleanup',
-    ]);
+    expect(phases.map((phase) => phase.phase)).toStrictEqual(['main', 'main', 'main', 'main']);
     expect(phases[2]?.rules[0]).toStrictEqual({
       id: 'RemoveNodeAndReconnectEdges',
       config: {
@@ -446,12 +441,12 @@ describe('AwsIamGraphPlugin.build', () => {
 
     expect(phases).toHaveLength(6);
     expect(phases.map((phase) => phase.phase)).toStrictEqual([
-      'normalize',
       'main',
       'main',
       'main',
-      'cleanup',
-      'cleanup',
+      'main',
+      'main',
+      'main',
     ]);
     expect(phases[5]?.rules[0]).toStrictEqual({
       id: 'RemoveLeafChain',
@@ -509,7 +504,7 @@ describe('AwsIamGraphPlugin.build', () => {
     });
 
     expect(phases).toHaveLength(5);
-    expect(phases.map((phase) => phase.phase)).toContain('cleanup');
+    expect(phases.map((phase) => phase.phase)).toContain('main');
     expect(phases.map((phase) => phase.rules[0]?.id)).not.toContain('RemoveLeafChain');
     expect(phases[4]?.rules[0]?.id).toBe('EdgeReverse');
   });

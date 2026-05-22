@@ -25,7 +25,9 @@ const buildPhases = (options: unknown = {}) => {
 const buildRules = (options: unknown = {}, phase?: 'normalize' | 'cleanup'): BaseRule[] => {
   const result = buildPhases(options);
   const phases = phase
-    ? (result.phases ?? []).filter((currentPhase) => currentPhase.phase === phase)
+    ? phase === 'normalize'
+      ? (result.phases ?? []).slice(0, 1)
+      : (result.phases ?? []).slice(1, 2)
     : (result.phases ?? []);
 
   return phases.flatMap((currentPhase) => currentPhase.rules as BaseRule[]);
@@ -66,7 +68,7 @@ describe('AwsNetworkPlacementPlugin.build', () => {
     const normalizeRules = buildRules({}, 'normalize');
     const cleanupRules = buildRules({}, 'cleanup');
 
-    expect(result.phases?.map((phase) => phase.phase)).toStrictEqual(['normalize', 'cleanup']);
+    expect(result.phases?.map((phase) => phase.phase)).toStrictEqual(['main', 'main']);
     expect(normalizeRules).toHaveLength(1);
     expect(cleanupRules).toHaveLength(1);
     expect(normalizeRules[0]?.serialize()).toStrictEqual({

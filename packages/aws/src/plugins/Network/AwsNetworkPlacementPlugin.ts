@@ -1092,7 +1092,7 @@ export class AwsNetworkPlacementPlugin extends GraphPlugin<AwsNetworkPlacementPl
     return {
       phases: [
         {
-          phase: 'normalize',
+          phase: 'main',
           rules: [
             new ApplyAwsNetworkPlacementHints({
               node: {
@@ -1103,7 +1103,7 @@ export class AwsNetworkPlacementPlugin extends GraphPlugin<AwsNetworkPlacementPl
           ],
         },
         {
-          phase: 'cleanup' as NamedPhase,
+          phase: 'main' as NamedPhase,
           rules: [
             new ApplyAwsNetworkCleanup({
               node: {

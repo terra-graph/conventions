@@ -1,6 +1,5 @@
 import {
   type AdapterOperations,
-  EdgeSemantic,
   type NodeId,
   NodeRule,
   RemoveNode,
@@ -8,7 +7,6 @@ import {
   type TgNodeAttributes,
   edgeIdFrom,
 } from '@terra-graph/core';
-import { AwsEdgeSemantics } from '../edgeSemantics.js';
 
 const LOAD_BALANCER_RESOURCE = 'aws_lb';
 const LOAD_BALANCER_LISTENER_RESOURCE = 'aws_lb_listener';
@@ -169,128 +167,7 @@ class MaterializeDirectAlbRoutes extends NodeRule {
 }
 
 export const albSemanticsRuleSet = new RuleSet({
-  rules: [
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_listener'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_listener'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_target_group'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_ecs_service'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_target_group'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_ecs_service'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_listener'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_ecs_service'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb_target_group'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_autoscaling_group'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-  ],
+  rules: [],
 });
 
 export const albCleanupRuleSet = new RuleSet({
@@ -317,46 +194,6 @@ export const albCleanupRuleSet = new RuleSet({
           key: 'terraform.resource',
           eq: 'aws_lb_target_group',
         },
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_ecs_service'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
-      },
-    }),
-    new EdgeSemantic({
-      edge: {
-        from: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_lb'],
-          },
-        },
-        to: {
-          attr: {
-            key: 'terraform.resource',
-            in: ['aws_autoscaling_group'],
-          },
-        },
-      },
-      options: {
-        semantic: AwsEdgeSemantics.Routes,
-        enforceDirection: true,
       },
     }),
   ],

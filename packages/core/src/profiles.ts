@@ -8,13 +8,14 @@ export const coreBase = new Profile(profileName('base'), {
       phase: 'pre',
       rules: [
         { namedRule: 'core.remove.tfconfig' },
+        { namedRule: 'core.remove.tfconfig_artifacts' },
         { namedRule: 'core.reconnect.time_sleep' },
-        { namedRule: 'core.collapse.indexed_resource_templates' },
-        { namedRule: 'core.remove.childless_modules' },
+        { namedRule: 'core.materialize.cardinality_resources' },
+        // { namedRule: 'core.remove.childless_modules' },
       ],
     },
     {
-      phase: 'cleanup',
+      phase: 'main',
       rules: [{ namedRule: 'core.remove.self_loops' }],
     },
   ],
@@ -33,7 +34,7 @@ export const coreDot = new Profile(profileName('dot'), {
       ],
     },
     {
-      phase: 'cleanup',
+      phase: 'final',
       rules: [
         new DotNodeLabel({
           node: {

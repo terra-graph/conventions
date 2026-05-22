@@ -218,4 +218,53 @@ describe('DotNodeLabel.apply', () => {
       },
     } as TgNodeAttributes);
   });
+
+  it('should render projection labels using copied layout metadata', () => {
+    const nodeId = asNodeId('node-projection');
+    const image = '/tmp/lambda.png';
+    const tg: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [nodeId]: {
+          id: nodeId,
+          projection: {
+            layer: 'core',
+            address: 'aws.lambda:handler[0]',
+            label: 'handler[0]',
+          },
+          hints: {
+            layout: {
+              image,
+              text2: 'aws_lambda_function',
+            },
+          },
+        },
+      },
+      edges: [],
+    };
+
+    const adapter = new DotAdapter().withTgGraph(tg);
+    const node = adapter.getNodeAttributes(nodeId);
+    if (!node) {
+      throw new Error('Missing node attributes for projection node');
+    }
+
+    const rule = new DotNodeLabel({
+      node: { nodeId: { eq: nodeId.toString() } },
+    });
+
+    rule.match(nodeId, node, adapter);
+    const result = rule.apply(nodeId, node, adapter);
+
+    expect(result.getNodeAttributes(nodeId)).toEqual({
+      ...node,
+      adapter: {
+        [DotAdapter.name]: {
+          label: makeExpectedImageLabel('aws_lambda_function', 'handler[0]', image),
+          shape: 'plaintext',
+        },
+      },
+    } as TgNodeAttributes);
+  });
 });

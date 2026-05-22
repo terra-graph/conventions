@@ -5,9 +5,10 @@ import {
   RemoveSelfLoopEdges,
 } from '@terra-graph/core';
 import { CollapseIndexedResourceTemplates } from './Rules/Node/CollapseIndexedResourceTemplates.js';
+import { MaterializeCardinalityResources } from './Rules/Node/MaterializeCardinalityResources.js';
 
 export const coreNamedRules = new NamedRuleRegistry({
-  'core.remove.outputs': new RemoveNode({
+  'core.remove.outputs': new RemoveNodeAndReconnectEdges({
     node: {
       attr: {
         key: 'terraform.kind',
@@ -39,27 +40,25 @@ export const coreNamedRules = new NamedRuleRegistry({
       },
     },
   }),
-  'core.remove.tfconfig': new RemoveNode({
+  'core.remove.tfconfig': new RemoveNodeAndReconnectEdges({
     node: {
-      or: [
-        {
-          attr: {
-            key: 'terraform.kind',
-            in: [
-              // 'data',
-              'local',
-              'var',
-              'terraform_data',
-            ],
-          },
-        },
-        {
-          attr: {
-            key: 'terraform.resource',
-            in: ['null_resource'],
-          },
-        },
-      ],
+      attr: {
+        key: 'terraform.kind',
+        in: [
+          // 'data',
+          'local',
+          'var',
+          'terraform_data',
+        ],
+      },
+    },
+  }),
+  'core.remove.tfconfig_artifacts': new RemoveNode({
+    node: {
+      attr: {
+        key: 'terraform.resource',
+        in: ['null_resource'],
+      },
     },
   }),
   'core.reconnect.time_sleep': new RemoveNodeAndReconnectEdges({
@@ -68,6 +67,11 @@ export const coreNamedRules = new NamedRuleRegistry({
         key: 'terraform.resource',
         eq: 'time_sleep',
       },
+    },
+  }),
+  'core.materialize.cardinality_resources': new MaterializeCardinalityResources({
+    node: {
+      any: true,
     },
   }),
   'core.collapse.indexed_resource_templates': new CollapseIndexedResourceTemplates({

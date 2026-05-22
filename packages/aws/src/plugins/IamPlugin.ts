@@ -66,7 +66,7 @@ export class IamPlugin extends GraphPlugin<AwsIamGraphPluginOptions> {
   }: GraphPluginBuildInput<AwsIamGraphPluginOptions>): GraphPluginBuildResult {
     const resolved = this.resolveOptions(options);
     const phases: PluginPhases = [
-      ...this.toPhases('normalize', this.buildIamDirectionPhases()),
+      ...this.toPhases('main', this.buildIamDirectionPhases()),
       ...this.toPhases('main', this.buildIamLabelHintPhases()),
       ...this.toPhases('main', this.buildAttachmentPhases(resolved)),
     ];
@@ -434,14 +434,14 @@ export class IamPlugin extends GraphPlugin<AwsIamGraphPluginOptions> {
   }
 
   private buildCleanupPhases(options: ResolvedAwsIamGraphPluginOptions): PluginPhases {
-    const phases: PluginPhases = [...this.toPhases('cleanup', this.buildIamDirectionPhases())];
+    const phases: PluginPhases = [...this.toPhases('main', this.buildIamDirectionPhases())];
 
     if (!options.removeOrphans) {
       return phases;
     }
 
     phases.push(
-      ...this.toPhases('cleanup', [
+      ...this.toPhases('main', [
         [
           new RemoveLeafChain({
             node: this.orphanPrunableIamQuery(),

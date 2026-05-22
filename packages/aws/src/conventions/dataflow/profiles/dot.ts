@@ -23,7 +23,7 @@ const baseDotProfile = new Profile<DotRendererOptions>('overview.dot', {
   },
   phases: [
     {
-      phase: 'normalize',
+      phase: 'final',
       rules: [{ namedRule: 'dot.normalise_modules' }],
     },
   ],
@@ -34,7 +34,7 @@ export default new Profile(conventionDataFlowDotProfileName, {
   usesProfiles: [base, baseDotProfile],
   phases: [
     {
-      phase: 'main',
+      phase: 'final',
       rules: [
         { namedRuleSet: ruleSetName('dot.sqs.dlq') },
         { namedRule: ruleName('dot.schedule.align') },

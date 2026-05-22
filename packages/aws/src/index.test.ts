@@ -64,10 +64,8 @@ describe('aws provider', () => {
       [
         ruleSetName('dot.sqs.dlq'),
         conventionName(Convention.DataFlow, ruleSetName('pre')),
-        conventionName(Convention.DataFlow, ruleSetName('normalize')),
-        conventionName(Convention.DataFlow, ruleSetName('cleanup')),
         conventionName(Convention.DataFlow, ruleSetName('main')),
-        conventionName(Convention.DataFlow, ruleSetName('semantics')),
+        conventionName(Convention.DataFlow, ruleSetName('final')),
       ].sort(),
     );
     expect(profiles.names().sort()).toEqual(
@@ -79,7 +77,7 @@ describe('aws provider', () => {
     const runtime = buildRuntimeProvider();
     const { namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
     expect(namedRules.names().length).toBe(4);
-    expect(namedRuleSets.names().length).toBe(6);
+    expect(namedRuleSets.names().length).toBe(4);
     expect(profiles.names().length).toBe(2);
   });
 

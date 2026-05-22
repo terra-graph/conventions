@@ -8,4 +8,4 @@ export const ruleSetName = (ruleSetName: string) => `${PACKAGE_NAMESPACE}:rulese
 export const profileName = (profileName: string): string =>
   `${PACKAGE_NAMESPACE}:profile:${profileName}`;
 export const conventionName = (conventionName: Convention, thing: string): string =>
-  `convention:${conventionName.toString()}:${thing}`;
+  `${thing}.${conventionName.toString()}`;
