@@ -15,7 +15,6 @@ import { VpcTopologyPlugin } from '../../../plugins/Network/VpcTopologyPlugin.js
 import { S3Plugin } from '../../../plugins/S3Plugin.js';
 import { Convention } from '../../index.js';
 import dataFlowConventionRules from '../rules.js';
-import dataFlowConventionRuleSet from '../rulesets.js';
 import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
 
 const baseNamedRules = new NamedRuleRegistry({
@@ -168,9 +167,6 @@ describe('dataflow dot profile', () => {
         { namedRuleSet: ruleSetName('dot.sqs.dlq') },
         { namedRule: ruleName('dot.schedule.align') },
       ]),
-    );
-    expect(dataFlowConventionRuleSet.names()).toContain(
-      conventionName(Convention.DataFlow, ruleSetName('final')),
     );
     expect(dataFlowConventionRules.names()).toEqual([]);
   });

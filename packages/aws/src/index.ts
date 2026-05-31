@@ -13,7 +13,6 @@ import conventionDataFlowDotProfile, {
   conventionDataFlowDotProfileName,
 } from './conventions/dataflow/profiles/dot.js';
 import dataFlowConventionRules from './conventions/dataflow/rules.js';
-import dataflowConventionRuleSet from './conventions/dataflow/rulesets.js';
 import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
 import { IamPlugin } from './plugins/IamPlugin.js';
 import { AwsNetworkPlacementPlugin } from './plugins/Network/AwsNetworkPlacementPlugin.js';
@@ -28,7 +27,7 @@ export * from './conventions/dataflow/edgeSemantics.js';
 
 export default (): RuntimeProvider => ({
   namedRules: NamedRuleRegistry.from([terraformRules, dotRules, dataFlowConventionRules]),
-  namedRuleSets: NamedRuleSetRegistry.from([dotRuleSet, dataflowConventionRuleSet]),
+  namedRuleSets: NamedRuleSetRegistry.from([dotRuleSet]),
   profiles: new ProfileRegistry({
     [conventionDataFlowDotProfileName]: conventionDataFlowDotProfile,
     [conventionDataFlowBaseProfileName]: conventionDataFlowBaseProfile,
