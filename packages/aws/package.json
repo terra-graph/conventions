@@ -34,7 +34,10 @@
     "@terra-graph/core": "^1.0.0-rc.25"
   },
   "devDependencies": {
-    "@terra-graph/core": "^1.0.0-rc.25"
+    "@terra-graph/core": "file:../../../terra-graph/core"
+  },
+  "resolutions": {
+    "@terra-graph/core": "file:../../../terra-graph/core"
   },
   "publishConfig": {
     "access": "public"

@@ -47,14 +47,6 @@ export default new Profile(conventionDataFlowBaseProfileName, {
         },
       ],
     },
-    {
-      phase: 'final',
-      rules: [
-        {
-          namedRuleSet: conventionName(Convention.DataFlow, ruleSetName('final')),
-        },
-      ],
-    },
   ],
   plugins: [
     { plugin: S3Plugin.id },
