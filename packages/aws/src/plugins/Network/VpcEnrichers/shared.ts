@@ -1,9 +1,11 @@
-import type { AdapterOperations, NodeId, TgNodeAttributes } from '@terra-graph/core';
+import {
+  isObjectRecord,
+  type AdapterOperations,
+  type NodeId,
+  type TgNodeAttributes,
+} from '@terra-graph/core';
 import type { PlacementContext, SubnetInfo } from './types.js';
-
-export const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
+export { isObjectRecord };
 
 export const toStringValue = (value: unknown): string | undefined => {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;

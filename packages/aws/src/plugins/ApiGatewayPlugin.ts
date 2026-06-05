@@ -4,6 +4,7 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
+  isObjectRecord,
   type NamedPhase,
   type NodeId,
   NodeRule,
@@ -59,10 +60,6 @@ type ResolvedAwsApiGatewayPluginOptions = {
 type PluginPhases = NonNullable<GraphPluginBuildResult['phases']>;
 type PluginRules = PluginPhases[number]['rules'];
 type PluginRulePhases = PluginRules[];
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
 
 const extractRouteKeyFromAddress = (address: string): string | undefined => {
   const bracketMatch = address.match(/\[(?:"([^"]+)"|'([^']+)')\]$/);

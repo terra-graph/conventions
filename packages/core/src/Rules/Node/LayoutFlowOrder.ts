@@ -1,5 +1,6 @@
 import {
   type AdapterOperations,
+  isObjectRecord,
   type NodeId,
   NodeRule,
   type NodeRuleConfig,
@@ -11,10 +12,6 @@ type LayoutFlowOrderOptions = {
   order?: string[][];
   orderPriority?: Record<string, number>;
   step?: number;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
 const isFiniteNumber = (value: unknown): value is number => {
@@ -90,7 +87,7 @@ export class LayoutFlowOrder extends NodeRule {
   }
 
   private parseOptions(input: unknown): LayoutFlowOrderOptions {
-    if (!isRecord(input)) {
+    if (!isObjectRecord(input)) {
       throw new Error(`Rule '${LayoutFlowOrder.name}' requires options to be an object`);
     }
 
@@ -123,7 +120,7 @@ export class LayoutFlowOrder extends NodeRule {
 
     if (orderPriority !== undefined) {
       const isValidPriority =
-        isRecord(orderPriority) &&
+        isObjectRecord(orderPriority) &&
         Object.values(orderPriority).every((value) => isFiniteNumber(value));
       if (!isValidPriority) {
         throw new Error(

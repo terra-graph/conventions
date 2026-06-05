@@ -1,5 +1,6 @@
 import {
   type AdapterOperations,
+  isObjectRecord,
   type NodeId,
   NodeRule,
   type TgEdgeAttributes,
@@ -39,9 +40,6 @@ type MaterializedEdge = {
   sourceEdgeId: string;
   to: NodeId;
 };
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const parseTerraformInstanceAddress = (address: string): ParsedTerraformInstanceAddress => {
   const match = address.match(/^(.*)\[(.+)\]$/);

@@ -3,6 +3,7 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
+  isObjectRecord,
   type NodeId,
   NodeRule,
   type TgGraphHints,
@@ -11,9 +12,11 @@ import {
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
 import {
+  readStateValues,
   resolveReferencedSubnetIds,
   resolveReferencedVpcIds,
   resolveUniqueVpcKeyFromModulePath,
+  toStringValue,
   toModulePath,
   toTerraformAddress,
 } from './VpcEnrichers/shared.js';
@@ -41,24 +44,6 @@ type SubnetInfo = {
 
 type ResolvedTopology = {
   scopes: Record<string, TgTopologyScope>;
-};
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
-
-const toStringValue = (value: unknown): string | undefined => {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-};
-
-const readStateValues = (node: TgNodeAttributes): Record<string, unknown> => {
-  const state = node.terraform?.state;
-  const effective = state?.effective;
-  if (!effective || !isObjectRecord(effective.values)) {
-    return {};
-  }
-
-  return effective.values;
 };
 
 const buildVpcScopeId = (vpcKey: string): string => `vpc:${vpcKey}`;
