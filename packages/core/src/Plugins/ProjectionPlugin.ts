@@ -1,14 +1,14 @@
 import {
-  ApplySemanticDecorators,
   ApplyProjectionEdgeSemantics,
+  ApplySemanticDecorators,
   DeriveProjectionGraph,
   type EdgeRuleQuery,
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
   MaterializeProjectionInstances,
-  ProjectionInstanceStrategies,
   ProjectionAdjacencyRelationship,
+  ProjectionInstanceStrategies,
   ProjectionSemanticFactRelationship,
   type SemanticDecoratorDefinition,
   resolveSemanticDecorators,
@@ -21,9 +21,7 @@ type ProjectionAdjacencyRelationshipRule = EdgeRuleQuery & {
   enforceDirection?: boolean;
 };
 
-type ProjectionSemanticRelationshipRule = Partial<
-  Record<'from' | 'to', unknown>
-> & {
+type ProjectionSemanticRelationshipRule = Partial<Record<'from' | 'to', unknown>> & {
   fact: string;
   relation: string;
   overwrite?: boolean;
@@ -56,9 +54,7 @@ export class ProjectionPlugin extends GraphPlugin<ProjectionPluginOptions> {
   public override build({
     options,
   }: GraphPluginBuildInput<ProjectionPluginOptions>): GraphPluginBuildResult {
-    const semanticDecorators = resolveSemanticDecorators(
-      options.semanticDecorators,
-    );
+    const semanticDecorators = resolveSemanticDecorators(options.semanticDecorators);
     const toAdjacencyEdgeQuery = ({
       relation: _relation,
       overwrite: _overwrite,
@@ -72,9 +68,7 @@ export class ProjectionPlugin extends GraphPlugin<ProjectionPluginOptions> {
       enforceDirection: _enforceDirection,
       ...edge
     }: ProjectionSemanticRelationshipRule): EdgeRuleQuery =>
-      (Object.keys(edge).length === 0
-        ? { any: true }
-        : (edge as EdgeRuleQuery));
+      Object.keys(edge).length === 0 ? { any: true } : (edge as EdgeRuleQuery);
 
     const semanticRelationshipRules = options.semanticRelationships?.map(
       (relationship) =>

@@ -1,8 +1,4 @@
-import {
-  GraphPluginRegistry,
-  Profile,
-  type SemanticDecorator,
-} from '@terra-graph/core';
+import { GraphPluginRegistry, Profile, type SemanticDecorator } from '@terra-graph/core';
 import { SemanticPlugin } from './SemanticPlugin.js';
 
 describe('SemanticPlugin', () => {

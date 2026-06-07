@@ -38,6 +38,10 @@ export const legendSemanticsRuleSet = new RuleSet({
             title: 'Observed by telemetry',
             colour: '#20c997',
           },
+          [AwsEdgeSemantics.DeadLettersTo.semantic]: {
+            title: 'Dead-letters to',
+            colour: '#6c757d',
+          },
         },
       },
     }),

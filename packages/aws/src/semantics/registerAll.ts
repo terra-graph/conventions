@@ -1,7 +1,8 @@
-import { AwsIamPermissionSemanticDecorator } from './AwsIamPermissionSemanticDecorator.js';
 import { SemanticDecoratorRegistry } from '@terra-graph/core';
+import { AwsIamPermissionSemanticDecorator } from './AwsIamPermissionSemanticDecorator.js';
 import { AwsPipeSemanticDecorator } from './AwsPipeSemanticDecorator.js';
 import { AwsScheduleSemanticDecorator } from './AwsScheduleSemanticDecorator.js';
+import { AwsSqsDeadLetterSemanticDecorator } from './AwsSqsDeadLetterSemanticDecorator.js';
 
 SemanticDecoratorRegistry.register(
   AwsPipeSemanticDecorator.id,
@@ -16,4 +17,9 @@ SemanticDecoratorRegistry.register(
 SemanticDecoratorRegistry.register(
   AwsIamPermissionSemanticDecorator.id,
   (config) => new AwsIamPermissionSemanticDecorator(config),
+);
+
+SemanticDecoratorRegistry.register(
+  AwsSqsDeadLetterSemanticDecorator.id,
+  () => new AwsSqsDeadLetterSemanticDecorator(),
 );

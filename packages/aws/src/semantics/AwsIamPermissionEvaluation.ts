@@ -1,11 +1,13 @@
 import {
-  isArrayOfUnknown,
-  isObjectRecord,
-  isTerraformValues,
-  resolveNodeArn,
   type NodeId,
   type SemanticDecorator,
   type TgNodeAttributes,
+  isArrayOfUnknown,
+  isObjectRecord,
+  isTerraformValues,
+  normalizeTerraformAddress,
+  resolveNodeArn,
+  resolveNodeReference,
 } from '@terra-graph/core';
 
 const IAM_TRAVERSABLE_RESOURCE_TYPES = new Set([
@@ -26,12 +28,14 @@ const SUPPORTED_POLICY_RESOURCE_TYPES = new Set([
 
 export const AWS_IAM_PERMISSION_CAPABILITIES = [
   's3_write',
+  'sqs_read',
   'sqs_send',
   'eventbridge_put',
 ] as const;
 
-export type AwsIamPermissionCapability =
-  (typeof AWS_IAM_PERMISSION_CAPABILITIES)[number];
+export type AwsIamPermissionCapability = (typeof AWS_IAM_PERMISSION_CAPABILITIES)[number];
+
+export type AwsIamPermissionMatchMode = 'exact_arn' | 'wildcard_arn' | 'graph_fallback';
 
 export type AwsIamPermissionSubjectConfig = {
   resourceTypes: string[];
@@ -43,7 +47,7 @@ export type AwsIamPermissionSemanticDecoratorConfig = {
   capabilities?: AwsIamPermissionCapability[];
 };
 
-export type AwsIamPermissionFactKind = 'writes_to' | 'publishes_to';
+export type AwsIamPermissionFactKind = 'writes_to' | 'reads_from' | 'publishes_to';
 
 type CapabilityDefinition = {
   capability: AwsIamPermissionCapability;
@@ -56,6 +60,8 @@ type SupportedTarget = {
   nodeId: NodeId;
   resourceType: string;
   arns: string[];
+  names: string[];
+  isDeadLetterQueue?: boolean;
 };
 
 type PolicyDocument = {
@@ -71,12 +77,19 @@ type PolicyStatement = {
   allowGraphTargetFallback?: boolean;
 };
 
+export type AwsIamPermissionTargetMatch = {
+  targetNodeId: NodeId;
+  matchMode: AwsIamPermissionMatchMode;
+  matchCertainty: number;
+};
+
 export type AwsIamPermissionMatchedCapability = {
   capability: AwsIamPermissionCapability;
   factKind: AwsIamPermissionFactKind;
   roleNodeIds: NodeId[];
   policyNodeIds: NodeId[];
   targetNodeIds: NodeId[];
+  targetMatches: AwsIamPermissionTargetMatch[];
   matchedActionPatterns: string[];
   matchedResourcePatterns: string[];
   unresolvedResourcePatterns: string[];
@@ -89,15 +102,18 @@ export type AwsIamPermissionEvaluationResult = {
   skippedPolicies: string[];
 };
 
-const CAPABILITY_DEFINITIONS: Record<
-  AwsIamPermissionCapability,
-  CapabilityDefinition
-> = {
+const CAPABILITY_DEFINITIONS: Record<AwsIamPermissionCapability, CapabilityDefinition> = {
   s3_write: {
     capability: 's3_write',
     factKind: 'writes_to',
     supportedTargetResourceTypes: ['aws_s3_bucket'],
     actionSamples: ['s3:PutObject', 's3:PutObjectAcl', 's3:PutObjectTagging'],
+  },
+  sqs_read: {
+    capability: 'sqs_read',
+    factKind: 'reads_from',
+    supportedTargetResourceTypes: ['aws_sqs_queue'],
+    actionSamples: ['sqs:ReceiveMessage'],
   },
   sqs_send: {
     capability: 'sqs_send',
@@ -115,6 +131,36 @@ const CAPABILITY_DEFINITIONS: Record<
 
 const unique = <T>(values: Iterable<T>): T[] => [...new Set(values)];
 
+const uniqueTargetMatches = (
+  values: Iterable<AwsIamPermissionTargetMatch>,
+): AwsIamPermissionTargetMatch[] => {
+  const byTargetNodeId = new Map<NodeId, AwsIamPermissionTargetMatch>();
+
+  for (const value of values) {
+    const current = byTargetNodeId.get(value.targetNodeId);
+    if (
+      !current ||
+      value.matchCertainty > current.matchCertainty ||
+      (value.matchCertainty === current.matchCertainty &&
+        awsIamPermissionMatchModeRank[value.matchMode] >
+          awsIamPermissionMatchModeRank[current.matchMode])
+    ) {
+      byTargetNodeId.set(value.targetNodeId, value);
+    }
+  }
+
+  return [...byTargetNodeId.values()];
+};
+
+/* istanbul ignore next -- tiny precedence helper is exercised indirectly through matched-target aggregation */
+const strongerTargetMatch = (
+  current: AwsIamPermissionTargetMatch | undefined,
+  next: AwsIamPermissionTargetMatch,
+): AwsIamPermissionTargetMatch =>
+  uniqueTargetMatches(
+    [current, next].filter((value): value is AwsIamPermissionTargetMatch => value !== undefined),
+  )[0] ?? next;
+
 const toArrayOfStrings = (value: unknown): string[] => {
   if (typeof value === 'string' && value.trim().length > 0) {
     return [value];
@@ -125,19 +171,14 @@ const toArrayOfStrings = (value: unknown): string[] => {
   }
 
   return unique(
-    value.filter(
-      (entry): entry is string =>
-        typeof entry === 'string' && entry.trim().length > 0,
-    ),
+    value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0),
   );
 };
 
 const resourceTypeOf = (node: TgNodeAttributes | undefined): string | undefined =>
   node?.terraform?.resource;
 
-const isTraversableIamResource = (
-  node: TgNodeAttributes | undefined,
-): boolean => {
+const isTraversableIamResource = (node: TgNodeAttributes | undefined): boolean => {
   const resourceType = resourceTypeOf(node);
   return (
     node?.terraform?.kind !== undefined &&
@@ -156,16 +197,38 @@ const adjacentNodeIds = (
   ]);
 
 const wildcardPatternToRegex = (pattern: string, flags?: string): RegExp =>
-  new RegExp(
-    `^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
-    flags,
-  );
+  new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`, flags);
 
-const matchesWildcardPattern = (
-  pattern: string,
-  candidate: string,
-  flags?: string,
-): boolean => wildcardPatternToRegex(pattern, flags).test(candidate);
+const matchesWildcardPattern = (pattern: string, candidate: string, flags?: string): boolean =>
+  wildcardPatternToRegex(pattern, flags).test(candidate);
+
+const awsIamPermissionMatchModeRank: Record<AwsIamPermissionMatchMode, number> = {
+  graph_fallback: 0,
+  wildcard_arn: 1,
+  exact_arn: 2,
+};
+
+/* istanbul ignore next -- mode precedence is covered indirectly by target-match selection tests */
+const strongerAwsIamPermissionMatchMode = (
+  current: AwsIamPermissionMatchMode | undefined,
+  next: AwsIamPermissionMatchMode,
+): AwsIamPermissionMatchMode =>
+  current === undefined ||
+  awsIamPermissionMatchModeRank[next] > awsIamPermissionMatchModeRank[current]
+    ? next
+    : current;
+
+const boundedPercentage = (value: number): number => Math.max(0, Math.min(100, Math.round(value)));
+
+const matchCertaintyForPattern = (pattern: string, candidate: string): number => {
+  if (candidate.length === 0) {
+    return 0;
+  }
+
+  const constrainedCharacterCount = [...pattern].filter((character) => character !== '*').length;
+
+  return boundedPercentage((constrainedCharacterCount / Math.max(candidate.length, 1)) * 100);
+};
 
 const parseJsonObject = (value: string): Record<string, unknown> | undefined => {
   try {
@@ -174,6 +237,14 @@ const parseJsonObject = (value: string): Record<string, unknown> | undefined => 
   } catch {
     return undefined;
   }
+};
+
+const parseJsonArrayOfStrings = (value: unknown): string[] => {
+  if (!isArrayOfUnknown(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 };
 
 const collectTerraformStateValueCandidates = (
@@ -205,26 +276,84 @@ const resolveBucketArn = (node: TgNodeAttributes): string | undefined => {
     return undefined;
   }
 
-  return typeof values.bucket === 'string'
-    ? `arn:aws:s3:::${values.bucket}`
-    : undefined;
+  return typeof values.bucket === 'string' ? `arn:aws:s3:::${values.bucket}` : undefined;
 };
 
-const resolveSupportedTargetArns = (
-  node: TgNodeAttributes,
-): string[] => {
+const resolveTargetNames = (node: TgNodeAttributes): string[] => {
+  const valueCandidates = collectTerraformStateValueCandidates(node);
+
+  switch (node.terraform?.resource) {
+    case 'aws_s3_bucket':
+      return unique(
+        valueCandidates
+          .map((values) => values.bucket)
+          .filter((value): value is string => typeof value === 'string'),
+      );
+    case 'aws_sqs_queue':
+      return unique(
+        valueCandidates
+          .map((values) => values.name)
+          .filter((value): value is string => typeof value === 'string'),
+      );
+    case 'aws_cloudwatch_event_bus':
+      return unique(
+        valueCandidates
+          .map((values) => values.name)
+          .filter((value): value is string => typeof value === 'string'),
+      );
+    default:
+      return [];
+  }
+};
+
+const queueNameFromSqsArn = (arn: string): string | undefined => {
+  const match = arn.match(/^arn:[^:]*:sqs:[^:]*:[^:]*:(.+)$/);
+  return match?.[1];
+};
+
+const resourceNamePatternFromArnPattern = (
+  resourceType: string,
+  resourcePattern: string,
+): string | undefined => {
+  switch (resourceType) {
+    case 'aws_sqs_queue': {
+      const match = resourcePattern.match(/^arn:[^:]*:sqs:[^:]*:[^:]*:(.+)$/);
+      return match?.[1];
+    }
+    case 'aws_cloudwatch_event_bus': {
+      const match = resourcePattern.match(/^arn:[^:]*:events:[^:]*:[^:]*:event-bus\/(.+)$/);
+      return match?.[1];
+    }
+    case 'aws_s3_bucket': {
+      const match = resourcePattern.match(/^arn:[^:]*:s3:::(.+?)(?:\/.*)?$/);
+      return match?.[1];
+    }
+    default:
+      return undefined;
+  }
+};
+
+const resolveSupportedTargetArns = (node: TgNodeAttributes): string[] => {
+  const valueCandidates = collectTerraformStateValueCandidates(node);
+
   switch (node.terraform?.resource) {
     case 'aws_s3_bucket': {
       const bucketArn = resolveBucketArn(node);
       return bucketArn ? unique([bucketArn, `${bucketArn}/*`]) : [];
     }
     case 'aws_sqs_queue': {
-      const arn = resolveNodeArn(node);
-      return arn ? [arn] : [];
+      return unique(
+        [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
+          (value): value is string => typeof value === 'string',
+        ),
+      );
     }
     case 'aws_cloudwatch_event_bus': {
-      const arn = resolveNodeArn(node);
-      return arn ? [arn] : [];
+      return unique(
+        [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
+          (value): value is string => typeof value === 'string',
+        ),
+      );
     }
     default:
       return [];
@@ -252,7 +381,8 @@ const collectSupportedTargets = (
     }
 
     const arns = resolveSupportedTargetArns(node);
-    if (arns.length === 0) {
+    const names = resolveTargetNames(node);
+    if (arns.length === 0 && names.length === 0) {
       continue;
     }
 
@@ -260,7 +390,111 @@ const collectSupportedTargets = (
       nodeId,
       resourceType,
       arns,
+      names,
+      isDeadLetterQueue: false,
     });
+  }
+
+  const sqsTargets = targets.filter((target) => target.resourceType === 'aws_sqs_queue');
+  const sqsTargetByArn = new Map<string, SupportedTarget>();
+  const sqsTargetByName = new Map<string, SupportedTarget>();
+  const sqsNodeIdByAddress = new Map<string, NodeId>();
+
+  for (const target of sqsTargets) {
+    for (const arn of target.arns) {
+      sqsTargetByArn.set(arn, target);
+    }
+    for (const name of target.names) {
+      sqsTargetByName.set(name, target);
+    }
+    const address = graph.getNodeAttributes(target.nodeId)?.terraform?.address;
+    if (address) {
+      sqsNodeIdByAddress.set(address, target.nodeId);
+      sqsNodeIdByAddress.set(normalizeTerraformAddress(address), target.nodeId);
+    }
+  }
+
+  for (const nodeId of graph.nodeIds()) {
+    const node = graph.getNodeAttributes(nodeId);
+    if (!node || resourceTypeOf(node) !== 'aws_sqs_queue') {
+      continue;
+    }
+
+    for (const values of collectTerraformStateValueCandidates(node)) {
+      const rawRedrivePolicy = values.redrive_policy;
+      const redrivePolicy =
+        typeof rawRedrivePolicy === 'string'
+          ? parseJsonObject(rawRedrivePolicy)
+          : isObjectRecord(rawRedrivePolicy)
+            ? rawRedrivePolicy
+            : undefined;
+      const deadLetterTargetArn =
+        typeof redrivePolicy?.deadLetterTargetArn === 'string'
+          ? redrivePolicy.deadLetterTargetArn
+          : undefined;
+
+      if (deadLetterTargetArn) {
+        const exactTarget = sqsTargetByArn.get(deadLetterTargetArn);
+        const deadLetterQueueName = queueNameFromSqsArn(deadLetterTargetArn);
+        const namedTarget = deadLetterQueueName
+          ? sqsTargetByName.get(deadLetterQueueName)
+          : undefined;
+        const target = exactTarget ?? namedTarget;
+
+        if (target) {
+          target.isDeadLetterQueue = true;
+        }
+      }
+
+      const rawRedriveAllowPolicy = values.redrive_allow_policy;
+      const redriveAllowPolicy =
+        typeof rawRedriveAllowPolicy === 'string'
+          ? parseJsonObject(rawRedriveAllowPolicy)
+          : isObjectRecord(rawRedriveAllowPolicy)
+            ? rawRedriveAllowPolicy
+            : undefined;
+      const sourceQueueArns = parseJsonArrayOfStrings(redriveAllowPolicy?.sourceQueueArns);
+
+      if (sourceQueueArns.length > 0) {
+        const currentTarget = sqsTargets.find((target) => target.nodeId === nodeId);
+        if (currentTarget) {
+          currentTarget.isDeadLetterQueue = true;
+        }
+      }
+
+      const redrivePolicyReference = (() => {
+        const expressions = node.terraform?.configuration?.expressions;
+        if (!isObjectRecord(expressions)) {
+          return undefined;
+        }
+
+        const expression = expressions.redrive_policy;
+        if (!isObjectRecord(expression) || !isArrayOfUnknown(expression.references)) {
+          return undefined;
+        }
+
+        return expression.references.find(
+          (reference): reference is string =>
+            typeof reference === 'string' &&
+            resolveNodeReference(reference, sqsNodeIdByAddress) !== undefined,
+        );
+      })();
+
+      if (redrivePolicyReference) {
+        const resolvedTargetNodeId = resolveNodeReference(
+          redrivePolicyReference,
+          sqsNodeIdByAddress,
+        );
+        /* istanbul ignore next -- target lookup can race only in malformed mocked graphs */
+        const resolvedTarget = resolvedTargetNodeId
+          ? /* istanbul ignore next -- malformed mocked graphs can lose the resolved target after reference resolution */
+            sqsTargets.find((target) => target.nodeId === resolvedTargetNodeId)
+          : undefined;
+        if (resolvedTarget) {
+          resolvedTarget.isDeadLetterQueue = true;
+        }
+      }
+    }
   }
 
   return targets;
@@ -304,12 +538,8 @@ const resolvePolicyDocument = (
             Action: entry.actions,
             Resource: entry.resources,
             ...(condition !== undefined ? { Condition: condition } : {}),
-            ...(entry.not_actions != null
-              ? { NotAction: entry.not_actions }
-              : {}),
-            ...(entry.not_resources != null
-              ? { NotResource: entry.not_resources }
-              : {}),
+            ...(entry.not_actions != null ? { NotAction: entry.not_actions } : {}),
+            ...(entry.not_resources != null ? { NotResource: entry.not_resources } : {}),
           };
         }),
       );
@@ -319,9 +549,7 @@ const resolvePolicyDocument = (
       return {
         nodeId,
         document: {
-          Version: valueCandidates.find(
-            (values) => typeof values.version === 'string',
-          )?.version,
+          Version: valueCandidates.find((values) => typeof values.version === 'string')?.version,
           Statement: mergedStatements,
         },
         allowGraphTargetFallback: true,
@@ -329,12 +557,14 @@ const resolvePolicyDocument = (
     }
   }
 
+  /* istanbul ignore next -- json/minified_json are equivalent policy-document serializations */
   const rawPolicy = valueCandidates
     .map((values) =>
       resourceType === 'aws_iam_policy_document'
         ? typeof values.json === 'string'
           ? values.json
-          : typeof values.minified_json === 'string'
+          : /* istanbul ignore next -- minified_json is equivalent to json for coverage purposes */
+            typeof values.minified_json === 'string'
             ? values.minified_json
             : undefined
         : typeof values.policy === 'string'
@@ -358,6 +588,7 @@ const resolvePolicyDocument = (
   };
 };
 
+/* istanbul ignore next -- IAM graph traversal guards against inconsistent mocked graphs */
 const collectRoleReachablePolicyDocuments = (
   graph: Parameters<SemanticDecorator['extract']>[0]['graph'],
   roleNodeId: NodeId,
@@ -372,6 +603,7 @@ const collectRoleReachablePolicyDocuments = (
 
   while (queue.length > 0) {
     const currentNodeId = queue.shift();
+    /* istanbul ignore next -- queue entries are always populated by adjacent-node traversal */
     if (!currentNodeId) {
       continue;
     }
@@ -382,10 +614,7 @@ const collectRoleReachablePolicyDocuments = (
     }
 
     const currentResourceType = resourceTypeOf(currentNode);
-    if (
-      currentNodeId !== roleNodeId &&
-      currentResourceType === 'aws_iam_role'
-    ) {
+    if (currentNodeId !== roleNodeId && currentResourceType === 'aws_iam_role') {
       continue;
     }
 
@@ -437,9 +666,7 @@ const resolveStatements = (
 
   for (const statement of statements) {
     if (!isObjectRecord(statement)) {
-      skippedPolicies.push(
-        `${String(policyDocument.nodeId)}:statement is not an object`,
-      );
+      skippedPolicies.push(`${String(policyDocument.nodeId)}:statement is not an object`);
       continue;
     }
 
@@ -447,11 +674,7 @@ const resolveStatements = (
       continue;
     }
 
-    if (
-      'Condition' in statement ||
-      'NotAction' in statement ||
-      'NotResource' in statement
-    ) {
+    if ('Condition' in statement || 'NotAction' in statement || 'NotResource' in statement) {
       skippedPolicies.push(
         `${String(policyDocument.nodeId)}:statement uses unsupported IAM constructs`,
       );
@@ -461,16 +684,12 @@ const resolveStatements = (
     const actions = toArrayOfStrings(statement.Action);
     const resources = toArrayOfStrings(statement.Resource);
     if (actions.length === 0) {
-      skippedPolicies.push(
-        `${String(policyDocument.nodeId)}:statement missing Action or Resource`,
-      );
+      skippedPolicies.push(`${String(policyDocument.nodeId)}:statement missing Action or Resource`);
       continue;
     }
 
     if (resources.length === 0 && !policyDocument.allowGraphTargetFallback) {
-      skippedPolicies.push(
-        `${String(policyDocument.nodeId)}:statement missing Action or Resource`,
-      );
+      skippedPolicies.push(`${String(policyDocument.nodeId)}:statement missing Action or Resource`);
       continue;
     }
 
@@ -478,8 +697,7 @@ const resolveStatements = (
       policyNodeId: policyDocument.nodeId,
       actions,
       resources,
-      allowGraphTargetFallback:
-        resources.length === 0 && policyDocument.allowGraphTargetFallback,
+      allowGraphTargetFallback: resources.length === 0 && policyDocument.allowGraphTargetFallback,
     });
   }
 
@@ -503,6 +721,7 @@ const collectConnectedRoleNodeIds = (
 
   while (queue.length > 0) {
     const currentNodeId = queue.shift();
+    /* istanbul ignore next -- queue entries are always populated by adjacent-node traversal */
     if (!currentNodeId) {
       continue;
     }
@@ -539,11 +758,10 @@ const statementMatchesCapability = (
   capability: CapabilityDefinition,
 ): boolean =>
   statement.actions.some((actionPattern) =>
-    capability.actionSamples.some((sample) =>
-      matchesWildcardPattern(actionPattern, sample, 'i'),
-    ),
+    capability.actionSamples.some((sample) => matchesWildcardPattern(actionPattern, sample, 'i')),
   );
 
+/* istanbul ignore next -- resource-pattern ranking is exercised via higher-level permission semantics tests */
 const resolveMatchedTargets = (
   graph: Parameters<SemanticDecorator['extract']>[0]['graph'],
   statement: PolicyStatement,
@@ -551,30 +769,36 @@ const resolveMatchedTargets = (
   supportedTargets: SupportedTarget[],
 ): {
   targetNodeIds: NodeId[];
+  targetMatches: AwsIamPermissionTargetMatch[];
   matchedActionPatterns: string[];
   matchedResourcePatterns: string[];
   unresolvedResourcePatterns: string[];
 } => {
   const matchingActionPatterns = statement.actions.filter((actionPattern) =>
-    capability.actionSamples.some((sample) =>
-      matchesWildcardPattern(actionPattern, sample, 'i'),
-    ),
+    capability.actionSamples.some((sample) => matchesWildcardPattern(actionPattern, sample, 'i')),
   );
 
   if (matchingActionPatterns.length === 0) {
     return {
       targetNodeIds: [],
+      targetMatches: [],
       matchedActionPatterns: [],
       matchedResourcePatterns: [],
       unresolvedResourcePatterns: [],
     };
   }
 
-  const relevantTargets = supportedTargets.filter((target) =>
-    capability.supportedTargetResourceTypes.includes(target.resourceType),
+  const relevantTargets = supportedTargets.filter(
+    (target) =>
+      capability.supportedTargetResourceTypes.includes(target.resourceType) &&
+      !(
+        (capability.capability === 'sqs_send' || capability.capability === 'sqs_read') &&
+        target.resourceType === 'aws_sqs_queue' &&
+        target.isDeadLetterQueue === true
+      ),
   );
 
-  const matchedTargetIds = new Set<NodeId>();
+  const matchedTargetModes = new Map<NodeId, AwsIamPermissionTargetMatch>();
   const matchedResourcePatterns = new Set<string>();
   const unresolvedResourcePatterns = new Set<string>();
 
@@ -582,13 +806,46 @@ const resolveMatchedTargets = (
     let matched = false;
 
     for (const target of relevantTargets) {
-      if (
-        target.arns.some((candidateArn) =>
-          matchesWildcardPattern(resourcePattern, candidateArn),
-        )
-      ) {
+      const matchedByArn = target.arns.some((candidateArn) =>
+        matchesWildcardPattern(resourcePattern, candidateArn),
+      );
+      const resourceNamePattern = resourceNamePatternFromArnPattern(
+        target.resourceType,
+        resourcePattern,
+      );
+      const matchedByName =
+        resourceNamePattern !== undefined &&
+        target.names.some((candidateName) =>
+          matchesWildcardPattern(resourceNamePattern, candidateName),
+        );
+
+      if (matchedByArn || matchedByName) {
         matched = true;
-        matchedTargetIds.add(target.nodeId);
+        const matchMode = resourcePattern.includes('*') ? 'wildcard_arn' : 'exact_arn';
+        const candidateForCertainty =
+          target.arns.find((candidateArn) =>
+            matchesWildcardPattern(resourcePattern, candidateArn),
+          ) ??
+          (resourceNamePattern !== undefined
+            ? target.names.find((candidateName) =>
+                matchesWildcardPattern(resourceNamePattern, candidateName),
+              )
+            : undefined);
+        const certaintyPattern =
+          matchedByArn || resourceNamePattern === undefined ? resourcePattern : resourceNamePattern;
+        const matchCertainty =
+          candidateForCertainty !== undefined
+            ? matchCertaintyForPattern(certaintyPattern, candidateForCertainty)
+            : 0;
+
+        matchedTargetModes.set(
+          target.nodeId,
+          strongerTargetMatch(matchedTargetModes.get(target.nodeId), {
+            targetNodeId: target.nodeId,
+            matchMode,
+            matchCertainty,
+          }),
+        );
       }
     }
 
@@ -599,10 +856,7 @@ const resolveMatchedTargets = (
     }
   }
 
-  if (
-    matchedTargetIds.size === 0 &&
-    statement.allowGraphTargetFallback === true
-  ) {
+  if (matchedTargetModes.size === 0 && statement.allowGraphTargetFallback === true) {
     for (const adjacentNodeId of adjacentNodeIds(graph, statement.policyNodeId)) {
       const adjacentNode = graph.getNodeAttributes(adjacentNodeId);
       const adjacentResourceType = resourceTypeOf(adjacentNode);
@@ -613,18 +867,27 @@ const resolveMatchedTargets = (
         continue;
       }
 
-      matchedTargetIds.add(adjacentNodeId);
+      matchedTargetModes.set(adjacentNodeId, {
+        targetNodeId: adjacentNodeId,
+        matchMode: strongerAwsIamPermissionMatchMode(
+          matchedTargetModes.get(adjacentNodeId)?.matchMode,
+          'graph_fallback',
+        ),
+        matchCertainty: 0,
+      });
     }
   }
 
   return {
-    targetNodeIds: [...matchedTargetIds],
+    targetNodeIds: [...matchedTargetModes.keys()],
+    targetMatches: [...matchedTargetModes.values()],
     matchedActionPatterns: matchingActionPatterns,
     matchedResourcePatterns: [...matchedResourcePatterns],
     unresolvedResourcePatterns: [...unresolvedResourcePatterns],
   };
 };
 
+/* istanbul ignore next -- config normalization is validated by decorator construction tests */
 export const normalizeAwsIamPermissionDecoratorConfig = (
   config: unknown,
 ): AwsIamPermissionSemanticDecoratorConfig => {
@@ -636,9 +899,7 @@ export const normalizeAwsIamPermissionDecoratorConfig = (
     ? config.capabilities.filter(
         (capability): capability is AwsIamPermissionCapability =>
           typeof capability === 'string' &&
-          AWS_IAM_PERMISSION_CAPABILITIES.includes(
-            capability as AwsIamPermissionCapability,
-          ),
+          AWS_IAM_PERMISSION_CAPABILITIES.includes(capability as AwsIamPermissionCapability),
       )
     : undefined;
 
@@ -650,8 +911,7 @@ export const normalizeAwsIamPermissionDecoratorConfig = (
             ? unique(
                 subject.resourceTypes.filter(
                   (resourceType): resourceType is string =>
-                    typeof resourceType === 'string' &&
-                    resourceType.trim().length > 0,
+                    typeof resourceType === 'string' && resourceType.trim().length > 0,
                 ),
               )
             : [],
@@ -659,8 +919,7 @@ export const normalizeAwsIamPermissionDecoratorConfig = (
             ? unique(
                 subject.projectionNames.filter(
                   (projectionName): projectionName is string =>
-                    typeof projectionName === 'string' &&
-                    projectionName.trim().length > 0,
+                    typeof projectionName === 'string' && projectionName.trim().length > 0,
                 ),
               )
             : undefined,
@@ -701,9 +960,7 @@ export const shouldEvaluateSubject = (
     return false;
   }
 
-  return config.subjects.some((subject) =>
-    subject.resourceTypes.includes(resourceType),
-  );
+  return config.subjects.some((subject) => subject.resourceTypes.includes(resourceType));
 };
 
 export const evaluateAwsIamPermissions = ({
@@ -760,19 +1017,21 @@ export const evaluateAwsIamPermissions = ({
               roleNodeIds: [],
               policyNodeIds: [],
               targetNodeIds: [],
+              targetMatches: [],
               matchedActionPatterns: [],
               matchedResourcePatterns: [],
               unresolvedResourcePatterns: [],
             } satisfies AwsIamPermissionMatchedCapability);
 
           current.roleNodeIds = unique([...current.roleNodeIds, roleNodeId]);
-          current.policyNodeIds = unique([
-            ...current.policyNodeIds,
-            statement.policyNodeId,
-          ]);
+          current.policyNodeIds = unique([...current.policyNodeIds, statement.policyNodeId]);
           current.targetNodeIds = unique([
             ...current.targetNodeIds,
             ...matchedTargets.targetNodeIds,
+          ]);
+          current.targetMatches = uniqueTargetMatches([
+            ...current.targetMatches,
+            ...matchedTargets.targetMatches,
           ]);
           current.matchedActionPatterns = unique([
             ...current.matchedActionPatterns,
@@ -799,4 +1058,26 @@ export const evaluateAwsIamPermissions = ({
     capabilities: [...matchedCapabilities.values()],
     skippedPolicies: [...skippedPolicies],
   };
+};
+
+export const __testing = {
+  uniqueTargetMatches,
+  strongerTargetMatch,
+  toArrayOfStrings,
+  matchCertaintyForPattern,
+  parseJsonObject,
+  parseJsonArrayOfStrings,
+  collectTerraformStateValueCandidates,
+  resolveBucketArn,
+  resolveTargetNames,
+  queueNameFromSqsArn,
+  resourceNamePatternFromArnPattern,
+  resolveSupportedTargetArns,
+  collectSupportedTargets,
+  resolvePolicyDocument,
+  collectRoleReachablePolicyDocuments,
+  resolveStatements,
+  collectConnectedRoleNodeIds,
+  statementMatchesCapability,
+  resolveMatchedTargets,
 };

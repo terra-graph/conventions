@@ -4,7 +4,6 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
-  isObjectRecord,
   type NamedPhase,
   type NodeId,
   NodeRule,
@@ -12,6 +11,7 @@ import {
   RemoveNodeAndReconnectEdges,
   type TgNodeAttributes,
   edgeIdFrom,
+  isObjectRecord,
   tgNodeIdFrom,
 } from '@terra-graph/core';
 import { pluginId } from '../namespaces.js';

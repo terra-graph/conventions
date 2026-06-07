@@ -3,12 +3,12 @@ import {
   GraphPlugin,
   type GraphPluginBuildInput,
   type GraphPluginBuildResult,
-  isObjectRecord,
   type NodeId,
   NodeRule,
   type TgGraphHints,
   type TgNodeAttributes,
   type TgTopologyScope,
+  isObjectRecord,
 } from '@terra-graph/core';
 import { pluginId } from '../../namespaces.js';
 import {
@@ -16,8 +16,8 @@ import {
   resolveReferencedSubnetIds,
   resolveReferencedVpcIds,
   resolveUniqueVpcKeyFromModulePath,
-  toStringValue,
   toModulePath,
+  toStringValue,
   toTerraformAddress,
 } from './VpcEnrichers/shared.js';
 

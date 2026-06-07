@@ -1,11 +1,11 @@
 import {
   type AdapterOperations,
-  isObjectRecord,
   type NodeId,
   NodeRule,
   type TgEdgeAttributes,
   type TgNodeAttributes,
   edgeIdFrom,
+  isObjectRecord,
 } from '@terra-graph/core';
 
 type ParsedTerraformInstanceAddress = {

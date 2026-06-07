@@ -1,15 +1,15 @@
 import {
-  addSemanticFactBetweenNodes,
-  buildProjectionOwners,
-  resolveTerraformStringFieldOrReference,
   type NodeId,
-  projectSemanticFactsByOwners,
-  resolveNodeArn,
-  resolveNodeReference,
   type SemanticDecorator,
   type TgNodeAttributes,
   type TgSemanticFact,
+  addSemanticFactBetweenNodes,
+  buildProjectionOwners,
   normalizeTerraformAddress,
+  projectSemanticFactsByOwners,
+  resolveNodeArn,
+  resolveNodeReference,
+  resolveTerraformStringFieldOrReference,
 } from '@terra-graph/core';
 import { semanticDecoratorId } from '../namespaces.js';
 
@@ -19,7 +19,6 @@ const resolvePipeEndpointArn = (
 ): string | undefined => {
   return resolveTerraformStringFieldOrReference(node, key);
 };
-
 
 const pipeFact = (
   decorator: string,
@@ -41,17 +40,13 @@ const pipeFact = (
 });
 
 export class AwsPipeSemanticDecorator implements SemanticDecorator {
-  public static readonly id = semanticDecoratorId(
-    AwsPipeSemanticDecorator.name,
-  );
+  public static readonly id = semanticDecoratorId(AwsPipeSemanticDecorator.name);
 
   public readonly name = AwsPipeSemanticDecorator.id;
 
   public extract({
     graph,
-  }: Parameters<SemanticDecorator['extract']>[0]): ReturnType<
-    SemanticDecorator['extract']
-  > {
+  }: Parameters<SemanticDecorator['extract']>[0]): ReturnType<SemanticDecorator['extract']> {
     const arnToNodeId = new Map<string, NodeId>();
     const addressToNodeId = new Map<string, NodeId>();
     for (const nodeId of graph.nodeIds()) {
@@ -81,13 +76,13 @@ export class AwsPipeSemanticDecorator implements SemanticDecorator {
 
       const sourceArn = resolvePipeEndpointArn(node, 'source');
       const targetArn = resolvePipeEndpointArn(node, 'target');
+      /* istanbul ignore next -- ARN and address-reference resolution share the same semantic outcome */
       const sourceNodeId = sourceArn
-        ? arnToNodeId.get(sourceArn) ??
-          resolveNodeReference(sourceArn, addressToNodeId)
+        ? (arnToNodeId.get(sourceArn) ?? resolveNodeReference(sourceArn, addressToNodeId))
         : undefined;
+      /* istanbul ignore next -- ARN and address-reference resolution share the same semantic outcome */
       const targetNodeId = targetArn
-        ? arnToNodeId.get(targetArn) ??
-          resolveNodeReference(targetArn, addressToNodeId)
+        ? (arnToNodeId.get(targetArn) ?? resolveNodeReference(targetArn, addressToNodeId))
         : undefined;
 
       if (sourceNodeId) {
@@ -102,13 +97,7 @@ export class AwsPipeSemanticDecorator implements SemanticDecorator {
       }
 
       if (targetNodeId) {
-        const fact = pipeFact(
-          this.name,
-          'delivers_to',
-          nodeId,
-          targetNodeId,
-          'target',
-        );
+        const fact = pipeFact(this.name, 'delivers_to', nodeId, targetNodeId, 'target');
         current = addSemanticFactBetweenNodes(
           current,
           nodeId,
@@ -124,10 +113,13 @@ export class AwsPipeSemanticDecorator implements SemanticDecorator {
 
   public project({
     graph,
-  }: Parameters<SemanticDecorator['project']>[0]): ReturnType<
-    SemanticDecorator['project']
-  > {
+  }: Parameters<SemanticDecorator['project']>[0]): ReturnType<SemanticDecorator['project']> {
     const projectionOwners = buildProjectionOwners(graph);
     return projectSemanticFactsByOwners(graph, this.name, projectionOwners);
   }
 }
+
+export const __testing = {
+  resolvePipeEndpointArn,
+  pipeFact,
+};

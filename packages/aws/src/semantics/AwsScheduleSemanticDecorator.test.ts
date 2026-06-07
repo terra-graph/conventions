@@ -8,6 +8,14 @@ import {
 import { DirectedGraph } from 'graphology';
 import { AwsScheduleSemanticDecorator } from './AwsScheduleSemanticDecorator.js';
 
+const requireDefined = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined();
+  if (value === undefined) {
+    throw new Error('Expected value to be defined');
+  }
+  return value;
+};
+
 describe('AwsScheduleSemanticDecorator', () => {
   it('should derive schedule semantic facts from target.arn and project them onto projection edges', () => {
     const scheduleId = asNodeId('schedule');
@@ -88,31 +96,32 @@ describe('AwsScheduleSemanticDecorator', () => {
     };
 
     const adapter = new GraphologyAdapter(
-      new DirectedGraph() as unknown as ConstructorParameters<
-        typeof GraphologyAdapter
-      >[0],
+      new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
     ).withTgGraph(graph);
     const decorator = new AwsScheduleSemanticDecorator();
 
     const extracted = decorator.extract({ graph: adapter });
-    const rawEdge = extracted.outEdges(scheduleId).find((edgeId) =>
-      extracted
-        .getEdgeAttributes(edgeId)
-        ?.semantic?.facts?.some((fact) => fact.kind === 'schedules'),
-    );
+    const rawEdge = extracted
+      .outEdges(scheduleId)
+      .find((edgeId) =>
+        extracted
+          .getEdgeAttributes(edgeId)
+          ?.semantic?.facts?.some((fact) => fact.kind === 'schedules'),
+      );
     expect(rawEdge).toBeDefined();
 
     const projected = decorator.project({ graph: extracted });
-    const projectionEdge = projected.outEdges(scheduleProjectionId).find(
-      (edgeId) =>
+    const projectionEdge = projected
+      .outEdges(scheduleProjectionId)
+      .find((edgeId) =>
         projected
           .getEdgeAttributes(edgeId)
           ?.projection?.semantics?.facts?.some((fact) => fact.kind === 'schedules'),
-    );
+      );
 
-    expect(projectionEdge).toBeDefined();
-    expect(projected.edgeSource(projectionEdge!)).toBe(scheduleProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).toBe(lambdaProjectionId);
+    const definedProjectionEdge = requireDefined(projectionEdge);
+    expect(projected.edgeSource(definedProjectionEdge)).toBe(scheduleProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).toBe(lambdaProjectionId);
   });
 
   it('should resolve module-scope schedule targets during project using projected roots', () => {
@@ -151,10 +160,7 @@ describe('AwsScheduleSemanticDecorator', () => {
                 target: [
                   {
                     arn: {
-                      references: [
-                        'module.gemini_bulk_request',
-                        'each.value.lambda_key',
-                      ],
+                      references: ['module.gemini_bulk_request', 'each.value.lambda_key'],
                     },
                   },
                 ],
@@ -180,26 +186,22 @@ describe('AwsScheduleSemanticDecorator', () => {
             state: {
               source: 'plan_show',
               effective: {
-                address:
-                  'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+                address: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
                 values: { function_name: 'gemini-abi' },
               },
               instances: [
                 {
-                  address:
-                    'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+                  address: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
                   index: 0,
                   values: { function_name: 'gemini-abi' },
                 },
                 {
-                  address:
-                    'module.gemini_bulk_request["mei"].aws_lambda_function.this[0]',
+                  address: 'module.gemini_bulk_request["mei"].aws_lambda_function.this[0]',
                   index: 0,
                   values: { function_name: 'gemini-mei' },
                 },
                 {
-                  address:
-                    'module.gemini_bulk_request["mti"].aws_lambda_function.this[0]',
+                  address: 'module.gemini_bulk_request["mti"].aws_lambda_function.this[0]',
                   index: 0,
                   values: { function_name: 'gemini-mti' },
                 },
@@ -221,8 +223,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               },
               instances: [
                 {
-                  address:
-                    'module.gemini_bulk_request["abi"].aws_iam_role.this[0]',
+                  address: 'module.gemini_bulk_request["abi"].aws_iam_role.this[0]',
                   index: 0,
                   values: {},
                 },
@@ -253,8 +254,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               source: 'plugin',
               projectionName: 'aws.lambda',
               rootNodeId: lambdaRootId,
-              rootInstanceAddress:
-                'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+              rootInstanceAddress: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
             },
           },
         },
@@ -268,8 +268,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               source: 'plugin',
               projectionName: 'aws.lambda',
               rootNodeId: lambdaRootId,
-              rootInstanceAddress:
-                'module.gemini_bulk_request["mei"].aws_lambda_function.this[0]',
+              rootInstanceAddress: 'module.gemini_bulk_request["mei"].aws_lambda_function.this[0]',
             },
           },
         },
@@ -283,8 +282,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               source: 'plugin',
               projectionName: 'aws.lambda',
               rootNodeId: lambdaRootId,
-              rootInstanceAddress:
-                'module.gemini_bulk_request["mti"].aws_lambda_function.this[0]',
+              rootInstanceAddress: 'module.gemini_bulk_request["mti"].aws_lambda_function.this[0]',
             },
           },
         },
@@ -306,9 +304,7 @@ describe('AwsScheduleSemanticDecorator', () => {
     };
 
     const adapter = new GraphologyAdapter(
-      new DirectedGraph() as unknown as ConstructorParameters<
-        typeof GraphologyAdapter
-      >[0],
+      new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
     ).withTgGraph(graph);
     const decorator = new AwsScheduleSemanticDecorator();
 
@@ -316,19 +312,20 @@ describe('AwsScheduleSemanticDecorator', () => {
     expect(extracted.outEdges(scheduleId)).toHaveLength(0);
 
     const projected = decorator.project({ graph: extracted });
-    const projectionEdge = projected.outEdges(scheduleProjectionId).find(
-      (edgeId) =>
+    const projectionEdge = projected
+      .outEdges(scheduleProjectionId)
+      .find((edgeId) =>
         projected
           .getEdgeAttributes(edgeId)
           ?.projection?.semantics?.facts?.some((fact) => fact.kind === 'schedules'),
-    );
+      );
 
-    expect(projectionEdge).toBeDefined();
-    expect(projected.edgeSource(projectionEdge!)).toBe(scheduleProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).toBe(lambdaAbiProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).not.toBe(lambdaMeiProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).not.toBe(lambdaMtiProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).not.toBe(roleProjectionId);
+    const definedProjectionEdge = requireDefined(projectionEdge);
+    expect(projected.edgeSource(definedProjectionEdge)).toBe(scheduleProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).toBe(lambdaAbiProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).not.toBe(lambdaMeiProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).not.toBe(lambdaMtiProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).not.toBe(roleProjectionId);
   });
 
   it('should fall back to outgoing module edges when schedule target references are unavailable during project', () => {
@@ -365,8 +362,7 @@ describe('AwsScheduleSemanticDecorator', () => {
           id: supportId,
           terraform: {
             kind: 'resource',
-            address:
-              'module.gemini_bulk_request.aws_lambda_permission.current_version_triggers',
+            address: 'module.gemini_bulk_request.aws_lambda_permission.current_version_triggers',
             resource: 'aws_lambda_permission',
             state: {
               source: 'plan_show',
@@ -395,14 +391,12 @@ describe('AwsScheduleSemanticDecorator', () => {
             state: {
               source: 'plan_show',
               effective: {
-                address:
-                  'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+                address: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
                 values: { function_name: 'gemini-abi' },
               },
               instances: [
                 {
-                  address:
-                    'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+                  address: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
                   index: 0,
                   values: { function_name: 'gemini-abi' },
                 },
@@ -419,14 +413,12 @@ describe('AwsScheduleSemanticDecorator', () => {
             state: {
               source: 'plan_show',
               effective: {
-                address:
-                  'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
+                address: 'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
                 values: {},
               },
               instances: [
                 {
-                  address:
-                    'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
+                  address: 'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
                   index: 0,
                   values: {},
                 },
@@ -458,8 +450,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               source: 'plugin',
               projectionName: 'aws.lambda',
               rootNodeId: lambdaRootId,
-              rootInstanceAddress:
-                'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
+              rootInstanceAddress: 'module.gemini_bulk_request["abi"].aws_lambda_function.this[0]',
               instanceKey: 'abi',
             },
           },
@@ -474,8 +465,7 @@ describe('AwsScheduleSemanticDecorator', () => {
               source: 'plugin',
               projectionName: 'aws.iam_role',
               rootNodeId: roleRootId,
-              rootInstanceAddress:
-                'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
+              rootInstanceAddress: 'module.gemini_bulk_request["abi"].aws_iam_role.lambda[0]',
               instanceKey: 'abi',
             },
           },
@@ -491,23 +481,22 @@ describe('AwsScheduleSemanticDecorator', () => {
     };
 
     const adapter = new GraphologyAdapter(
-      new DirectedGraph() as unknown as ConstructorParameters<
-        typeof GraphologyAdapter
-      >[0],
+      new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
     ).withTgGraph(graph);
     const decorator = new AwsScheduleSemanticDecorator();
 
     const projected = decorator.project({ graph: adapter });
-    const projectionEdge = projected.outEdges(scheduleProjectionId).find(
-      (edgeId) =>
+    const projectionEdge = projected
+      .outEdges(scheduleProjectionId)
+      .find((edgeId) =>
         projected
           .getEdgeAttributes(edgeId)
           ?.projection?.semantics?.facts?.some((fact) => fact.kind === 'schedules'),
-    );
+      );
 
-    expect(projectionEdge).toBeDefined();
-    expect(projected.edgeSource(projectionEdge!)).toBe(scheduleProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).toBe(lambdaAbiProjectionId);
-    expect(projected.edgeTarget(projectionEdge!)).not.toBe(roleProjectionId);
+    const definedProjectionEdge = requireDefined(projectionEdge);
+    expect(projected.edgeSource(definedProjectionEdge)).toBe(scheduleProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).toBe(lambdaAbiProjectionId);
+    expect(projected.edgeTarget(definedProjectionEdge)).not.toBe(roleProjectionId);
   });
 });

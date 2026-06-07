@@ -1,8 +1,8 @@
 import {
-  isObjectRecord,
   type AdapterOperations,
   type NodeId,
   type TgNodeAttributes,
+  isObjectRecord,
 } from '@terra-graph/core';
 import type { PlacementContext, SubnetInfo } from './types.js';
 export { isObjectRecord };

@@ -62,7 +62,6 @@ describe('aws provider', () => {
     expect(namedRuleSets.names().sort()).toEqual(
       [
         ruleSetName('dot.sqs.dlq'),
-        conventionName(Convention.DataFlow, ruleSetName('pre')),
         conventionName(Convention.DataFlow, ruleSetName('main')),
         conventionName(Convention.DataFlow, ruleSetName('final')),
       ].sort(),
@@ -76,14 +75,18 @@ describe('aws provider', () => {
     const runtime = buildRuntimeProvider();
     const { namedRules, namedRuleSets, profiles } = assertRuntime(runtime);
     expect(namedRules.names().length).toBe(4);
-    expect(namedRuleSets.names().length).toBe(4);
+    expect(namedRuleSets.names().length).toBe(3);
     expect(profiles.names().length).toBe(2);
   });
 
   it('shoud export aws edge direction semantic names', () => {
-    expect(AwsEdgeSemantics).toEqual(DefaultEdgeSemantics);
+    expect(AwsEdgeSemantics).toMatchObject(DefaultEdgeSemantics);
     expect(AwsEdgeSemantics.Authorizes.role).toBe('supporting');
     expect(AwsEdgeSemantics.Accesses.role).toBe('primary');
     expect(AwsEdgeSemantics.ObservedBy.role).toBe('supporting');
+    expect(AwsEdgeSemantics.DeadLettersTo).toEqual({
+      semantic: 'dead_letters_to',
+      role: 'primary',
+    });
   });
 });

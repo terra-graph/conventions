@@ -19,9 +19,7 @@ describe('AwsPipeSemanticDecorator', () => {
     const rawSourceEdgeId = asEdgeId('pipe->queue');
     const rawTargetEdgeId = asEdgeId('pipe->state-machine');
     const projectedSourceEdgeId = asEdgeId('projection-queue->projection-pipe');
-    const projectedTargetEdgeId = asEdgeId(
-      'projection-pipe->projection-state-machine',
-    );
+    const projectedTargetEdgeId = asEdgeId('projection-pipe->projection-state-machine');
 
     const graph: TgGraph = {
       schemaVersion: TG_SCHEMA_VERSION,
@@ -57,8 +55,7 @@ describe('AwsPipeSemanticDecorator', () => {
                 address: 'aws_pipes_pipe.event_pipe',
                 values: {
                   source: 'arn:aws:sqs:eu-west-2:123456789012:event-queue',
-                  target:
-                    'arn:aws:states:eu-west-2:123456789012:stateMachine:event-flow',
+                  target: 'arn:aws:states:eu-west-2:123456789012:stateMachine:event-flow',
                 },
               },
               instances: [],
@@ -165,24 +162,18 @@ describe('AwsPipeSemanticDecorator', () => {
     };
 
     const adapter = new GraphologyAdapter(
-      new DirectedGraph() as unknown as ConstructorParameters<
-        typeof GraphologyAdapter
-      >[0],
+      new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
     ).withTgGraph(graph);
     const decorator = new AwsPipeSemanticDecorator();
 
     const extracted = decorator.extract({ graph: adapter });
-    expect(
-      extracted.getEdgeAttributes(rawSourceEdgeId)?.semantic?.facts?.[0],
-    ).toMatchObject({
+    expect(extracted.getEdgeAttributes(rawSourceEdgeId)?.semantic?.facts?.[0]).toMatchObject({
       kind: 'feeds',
       from: queueId,
       to: pipeId,
       decorator: AwsPipeSemanticDecorator.id,
     });
-    expect(
-      extracted.getEdgeAttributes(rawTargetEdgeId)?.semantic?.facts?.[0],
-    ).toMatchObject({
+    expect(extracted.getEdgeAttributes(rawTargetEdgeId)?.semantic?.facts?.[0]).toMatchObject({
       kind: 'delivers_to',
       from: pipeId,
       to: stateMachineId,
@@ -191,8 +182,7 @@ describe('AwsPipeSemanticDecorator', () => {
 
     const projected = decorator.project({ graph: extracted });
     expect(
-      projected.getEdgeAttributes(projectedSourceEdgeId)?.projection?.semantics
-        ?.facts?.[0],
+      projected.getEdgeAttributes(projectedSourceEdgeId)?.projection?.semantics?.facts?.[0],
     ).toMatchObject({
       kind: 'feeds',
       from: queueProjectionId,
@@ -203,8 +193,7 @@ describe('AwsPipeSemanticDecorator', () => {
       },
     });
     expect(
-      projected.getEdgeAttributes(projectedTargetEdgeId)?.projection?.semantics
-        ?.facts?.[0],
+      projected.getEdgeAttributes(projectedTargetEdgeId)?.projection?.semantics?.facts?.[0],
     ).toMatchObject({
       kind: 'delivers_to',
       from: pipeProjectionId,
@@ -258,8 +247,7 @@ describe('AwsPipeSemanticDecorator', () => {
                 address: 'aws_pipes_pipe.event_pipe',
                 values: {
                   source: 'arn:aws:sqs:eu-west-2:123456789012:event-queue',
-                  target:
-                    'arn:aws:states:eu-west-2:123456789012:stateMachine:event-flow',
+                  target: 'arn:aws:states:eu-west-2:123456789012:stateMachine:event-flow',
                 },
               },
               instances: [],
@@ -325,9 +313,7 @@ describe('AwsPipeSemanticDecorator', () => {
     };
 
     const adapter = new GraphologyAdapter(
-      new DirectedGraph() as unknown as ConstructorParameters<
-        typeof GraphologyAdapter
-      >[0],
+      new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
     ).withTgGraph(graph);
     const decorator = new AwsPipeSemanticDecorator();
 
@@ -336,11 +322,7 @@ describe('AwsPipeSemanticDecorator', () => {
     expect(extracted.edgesBetween(pipeId, stateMachineId)).toHaveLength(1);
     const projected = decorator.project({ graph: extracted });
 
-    expect(projected.edgesBetween(queueProjectionId, pipeProjectionId)).toHaveLength(
-      1,
-    );
-    expect(
-      projected.edgesBetween(pipeProjectionId, stateMachineProjectionId),
-    ).toHaveLength(1);
+    expect(projected.edgesBetween(queueProjectionId, pipeProjectionId)).toHaveLength(1);
+    expect(projected.edgesBetween(pipeProjectionId, stateMachineProjectionId)).toHaveLength(1);
   });
 });

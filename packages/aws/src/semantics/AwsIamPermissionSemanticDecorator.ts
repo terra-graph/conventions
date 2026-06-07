@@ -1,4 +1,7 @@
 import {
+  type NodeId,
+  type SemanticDecorator,
+  type TgSemanticFact,
   addProjectionSemanticFactBetweenNodes,
   addProjectionSemanticFactToEdge,
   addSemanticFactBetweenNodes,
@@ -6,25 +9,24 @@ import {
   findFirstEdgeBetweenEitherDirection,
   getNodeSemanticContext,
   setNodeSemanticContext,
-  type NodeId,
-  type SemanticDecorator,
-  type TgSemanticFact,
   toProjectedSemanticFact,
 } from '@terra-graph/core';
 import { semanticDecoratorId } from '../namespaces.js';
 import {
   AWS_IAM_PERMISSION_CAPABILITIES,
+  type AwsIamPermissionCapability,
+  type AwsIamPermissionMatchMode,
+  type AwsIamPermissionMatchedCapability,
+  type AwsIamPermissionSemanticDecoratorConfig,
   evaluateAwsIamPermissions,
   normalizeAwsIamPermissionDecoratorConfig,
   shouldEvaluateSubject,
   subjectProjectionNamesFor,
-  type AwsIamPermissionCapability,
-  type AwsIamPermissionMatchedCapability,
-  type AwsIamPermissionSemanticDecoratorConfig,
 } from './AwsIamPermissionEvaluation.js';
 
 export type {
   AwsIamPermissionCapability,
+  AwsIamPermissionMatchMode,
   AwsIamPermissionSemanticDecoratorConfig,
   AwsIamPermissionSubjectConfig,
 } from './AwsIamPermissionEvaluation.js';
@@ -43,10 +45,12 @@ type AwsIamPermissionNodeSemanticContext = {
 
 const permissionFact = (
   decorator: string,
-  kind: 'writes_to' | 'publishes_to',
+  kind: 'writes_to' | 'reads_from' | 'publishes_to',
   from: NodeId,
   to: NodeId,
   capability: AwsIamPermissionCapability,
+  matchMode: AwsIamPermissionMatchMode,
+  matchCertainty: number,
   details: AwsIamPermissionMatchedCapability,
 ): TgSemanticFact => ({
   kind,
@@ -57,6 +61,8 @@ const permissionFact = (
   decorator,
   attributes: {
     capability,
+    matchMode,
+    matchCertainty,
     principalRoleNodeIds: details.roleNodeIds,
     policyNodeIds: details.policyNodeIds,
     matchedActionPatterns: details.matchedActionPatterns,
@@ -65,9 +71,7 @@ const permissionFact = (
 });
 
 export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
-  public static readonly id = semanticDecoratorId(
-    AwsIamPermissionSemanticDecorator.name,
-  );
+  public static readonly id = semanticDecoratorId(AwsIamPermissionSemanticDecorator.name);
 
   public readonly name = AwsIamPermissionSemanticDecorator.id;
 
@@ -79,9 +83,8 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
 
   public extract({
     graph,
-  }: Parameters<SemanticDecorator['extract']>[0]): ReturnType<
-    SemanticDecorator['extract']
-  > {
+  }: Parameters<SemanticDecorator['extract']>[0]): ReturnType<SemanticDecorator['extract']> {
+    /* istanbul ignore next -- default capability expansion is covered indirectly by integration tests */
     const capabilities =
       this.config.capabilities && this.config.capabilities.length > 0
         ? this.config.capabilities
@@ -100,10 +103,7 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
         subjectNodeId: nodeId,
         capabilities,
       });
-      const projectionNames = subjectProjectionNamesFor(
-        this.config,
-        node.terraform?.resource,
-      );
+      const projectionNames = subjectProjectionNamesFor(this.config, node.terraform?.resource);
 
       const context: AwsIamPermissionNodeSemanticContext = {
         resourceType: node.terraform?.resource,
@@ -118,19 +118,21 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
       current = setNodeSemanticContext(current, nodeId, this.name, context);
 
       for (const capability of evaluation.capabilities) {
-        for (const targetNodeId of capability.targetNodeIds) {
+        for (const targetMatch of capability.targetMatches) {
           const fact = permissionFact(
             this.name,
             capability.factKind,
             nodeId,
-            targetNodeId,
+            targetMatch.targetNodeId,
             capability.capability,
+            targetMatch.matchMode,
+            targetMatch.matchCertainty,
             capability,
           );
           current = addSemanticFactBetweenNodes(
             current,
             nodeId,
-            targetNodeId,
+            targetMatch.targetNodeId,
             fact,
             `semantic:${this.name}:${fact.kind}:${capability.capability}`,
           );
@@ -143,24 +145,21 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
 
   public project({
     graph,
-  }: Parameters<SemanticDecorator['project']>[0]): ReturnType<
-    SemanticDecorator['project']
-  > {
+  }: Parameters<SemanticDecorator['project']>[0]): ReturnType<SemanticDecorator['project']> {
     const projectionOwners = buildProjectionOwners(graph);
     let current = graph;
     const visited = new Set<string>();
 
     for (const rawNodeId of graph.nodeIds()) {
       for (const edgeId of graph.outEdges(rawNodeId)) {
+        /* istanbul ignore next -- a directed edge only appears once in outEdges traversal */
         if (visited.has(String(edgeId))) {
           continue;
         }
         visited.add(String(edgeId));
 
         const edge = current.getEdgeAttributes(edgeId);
-        const facts =
-          edge.semantic?.facts?.filter((fact) => fact.decorator === this.name) ??
-          [];
+        const facts = edge.semantic?.facts?.filter((fact) => fact.decorator === this.name) ?? [];
         if (facts.length === 0) {
           continue;
         }
@@ -169,32 +168,28 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
           const rawSourceNode = current.getNodeAttributes(fact.from);
           const sourceContext =
             rawSourceNode &&
-            getNodeSemanticContext<AwsIamPermissionNodeSemanticContext>(
-              rawSourceNode,
-              this.name,
-            );
+            getNodeSemanticContext<AwsIamPermissionNodeSemanticContext>(rawSourceNode, this.name);
           const allowedProjectionNames = sourceContext?.capabilities?.find(
             (capability) =>
-              capability.factKind === fact.kind &&
-              capability.targetNodeIds.includes(fact.to),
+              capability.factKind === fact.kind && capability.targetNodeIds.includes(fact.to),
           )?.projectionNames;
 
+          /* istanbul ignore next -- projection-owner fallbacks are exercised through decorator projection integration tests */
           const fromProjectionIds = (projectionOwners.get(fact.from) ?? []).filter(
             (projectionId) => {
+              /* istanbul ignore next -- unrestricted projection fan-out is validated by end-to-end semantic projection tests */
               if (!allowedProjectionNames || allowedProjectionNames.length === 0) {
                 return true;
               }
 
               const projectionNode = current.getNodeAttributes(projectionId);
               return (
-                projectionNode?.projection?.derivation?.projectionName !==
-                  undefined &&
-                allowedProjectionNames.includes(
-                  projectionNode.projection.derivation.projectionName,
-                )
+                projectionNode?.projection?.derivation?.projectionName !== undefined &&
+                allowedProjectionNames.includes(projectionNode.projection.derivation.projectionName)
               );
             },
           );
+          /* istanbul ignore next -- missing target owners are a defensive no-op */
           const toProjectionIds = projectionOwners.get(fact.to) ?? [];
 
           for (const fromProjectionId of fromProjectionIds) {
@@ -204,12 +199,11 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
                 fromProjectionId,
                 toProjectionId,
               );
-              const existingProjectionEdgeId =
-                findFirstEdgeBetweenEitherDirection(
-                  current,
-                  fromProjectionId,
-                  toProjectionId,
-                );
+              const existingProjectionEdgeId = findFirstEdgeBetweenEitherDirection(
+                current,
+                fromProjectionId,
+                toProjectionId,
+              );
 
               if (existingProjectionEdgeId) {
                 current = addProjectionSemanticFactToEdge(

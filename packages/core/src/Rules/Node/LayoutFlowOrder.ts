@@ -1,10 +1,10 @@
 import {
   type AdapterOperations,
-  isObjectRecord,
   type NodeId,
   NodeRule,
   type NodeRuleConfig,
   type TgNodeAttributes,
+  isObjectRecord,
 } from '@terra-graph/core';
 
 type LayoutFlowOrderOptions = {
