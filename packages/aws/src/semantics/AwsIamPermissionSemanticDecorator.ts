@@ -13,8 +13,6 @@ import {
 } from '@terra-graph/core';
 import { semanticDecoratorId } from '../namespaces.js';
 import {
-  AWS_IAM_PERMISSION_CAPABILITIES,
-  type AwsIamPermissionCapability,
   type AwsIamPermissionMatchMode,
   type AwsIamPermissionMatchedCapability,
   type AwsIamPermissionSemanticDecoratorConfig,
@@ -22,14 +20,14 @@ import {
   normalizeAwsIamPermissionDecoratorConfig,
   shouldEvaluateSubject,
   subjectProjectionNamesFor,
-} from './AwsIamPermissionEvaluation.js';
+} from './IamEvaluation/AwsIamPermissionEvaluation.js';
+import { AWS_IAM_PERMISSION_CAPABILITIES } from './IamEvaluation/Capabailities.js';
 
 export type {
-  AwsIamPermissionCapability,
   AwsIamPermissionMatchMode,
   AwsIamPermissionSemanticDecoratorConfig,
   AwsIamPermissionSubjectConfig,
-} from './AwsIamPermissionEvaluation.js';
+} from './IamEvaluation/AwsIamPermissionEvaluation.js';
 
 type AwsIamPermissionNodeSemanticContext = {
   resourceType?: string;
@@ -45,10 +43,10 @@ type AwsIamPermissionNodeSemanticContext = {
 
 const permissionFact = (
   decorator: string,
-  kind: 'writes_to' | 'reads_from' | 'publishes_to',
+  kind: string,
   from: NodeId,
   to: NodeId,
-  capability: AwsIamPermissionCapability,
+  capability: string,
   matchMode: AwsIamPermissionMatchMode,
   matchCertainty: number,
   details: AwsIamPermissionMatchedCapability,
@@ -88,7 +86,7 @@ export class AwsIamPermissionSemanticDecorator implements SemanticDecorator {
     const capabilities =
       this.config.capabilities && this.config.capabilities.length > 0
         ? this.config.capabilities
-        : [...AWS_IAM_PERMISSION_CAPABILITIES];
+        : [...AWS_IAM_PERMISSION_CAPABILITIES()];
 
     let current = graph;
 

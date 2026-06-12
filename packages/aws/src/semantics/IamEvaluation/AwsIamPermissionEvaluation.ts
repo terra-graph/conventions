@@ -4,11 +4,21 @@ import {
   type TgNodeAttributes,
   isArrayOfUnknown,
   isObjectRecord,
-  isTerraformValues,
-  normalizeTerraformAddress,
-  resolveNodeArn,
-  resolveNodeReference,
 } from '@terra-graph/core';
+import {
+  collectTerraformStateValueCandidates,
+  parseJsonObject,
+  resourceTypeOf,
+  toArrayOfStrings,
+  unique,
+} from '../../utils.js';
+import CAPABILITY_DEFINITIONS, {
+  AWS_IAM_PERMISSION_CAPABILITIES,
+  type CapabilityDefinition,
+} from './Capabailities.js';
+import Resources from './Resources.js';
+
+export { AWS_IAM_PERMISSION_CAPABILITIES } from './Capabailities.js';
 
 const IAM_TRAVERSABLE_RESOURCE_TYPES = new Set([
   'aws_iam_role',
@@ -26,15 +36,6 @@ const SUPPORTED_POLICY_RESOURCE_TYPES = new Set([
   'aws_iam_policy_document',
 ]);
 
-export const AWS_IAM_PERMISSION_CAPABILITIES = [
-  's3_write',
-  'sqs_read',
-  'sqs_send',
-  'eventbridge_put',
-] as const;
-
-export type AwsIamPermissionCapability = (typeof AWS_IAM_PERMISSION_CAPABILITIES)[number];
-
 export type AwsIamPermissionMatchMode = 'exact_arn' | 'wildcard_arn' | 'graph_fallback';
 
 export type AwsIamPermissionSubjectConfig = {
@@ -44,25 +45,15 @@ export type AwsIamPermissionSubjectConfig = {
 
 export type AwsIamPermissionSemanticDecoratorConfig = {
   subjects?: AwsIamPermissionSubjectConfig[];
-  capabilities?: AwsIamPermissionCapability[];
+  capabilities?: string[];
 };
 
-export type AwsIamPermissionFactKind = 'writes_to' | 'reads_from' | 'publishes_to';
-
-type CapabilityDefinition = {
-  capability: AwsIamPermissionCapability;
-  factKind: AwsIamPermissionFactKind;
-  supportedTargetResourceTypes: string[];
-  actionSamples: string[];
-};
-
-type SupportedTarget = {
+export interface SupportedTarget extends Record<string, unknown> {
   nodeId: NodeId;
   resourceType: string;
   arns: string[];
   names: string[];
-  isDeadLetterQueue?: boolean;
-};
+}
 
 type PolicyDocument = {
   nodeId: NodeId;
@@ -84,8 +75,8 @@ export type AwsIamPermissionTargetMatch = {
 };
 
 export type AwsIamPermissionMatchedCapability = {
-  capability: AwsIamPermissionCapability;
-  factKind: AwsIamPermissionFactKind;
+  capability: string;
+  factKind: string;
   roleNodeIds: NodeId[];
   policyNodeIds: NodeId[];
   targetNodeIds: NodeId[];
@@ -101,35 +92,6 @@ export type AwsIamPermissionEvaluationResult = {
   capabilities: AwsIamPermissionMatchedCapability[];
   skippedPolicies: string[];
 };
-
-const CAPABILITY_DEFINITIONS: Record<AwsIamPermissionCapability, CapabilityDefinition> = {
-  s3_write: {
-    capability: 's3_write',
-    factKind: 'writes_to',
-    supportedTargetResourceTypes: ['aws_s3_bucket'],
-    actionSamples: ['s3:PutObject', 's3:PutObjectAcl', 's3:PutObjectTagging'],
-  },
-  sqs_read: {
-    capability: 'sqs_read',
-    factKind: 'reads_from',
-    supportedTargetResourceTypes: ['aws_sqs_queue'],
-    actionSamples: ['sqs:ReceiveMessage'],
-  },
-  sqs_send: {
-    capability: 'sqs_send',
-    factKind: 'publishes_to',
-    supportedTargetResourceTypes: ['aws_sqs_queue'],
-    actionSamples: ['sqs:SendMessage'],
-  },
-  eventbridge_put: {
-    capability: 'eventbridge_put',
-    factKind: 'publishes_to',
-    supportedTargetResourceTypes: ['aws_cloudwatch_event_bus'],
-    actionSamples: ['events:PutEvents'],
-  },
-};
-
-const unique = <T>(values: Iterable<T>): T[] => [...new Set(values)];
 
 const uniqueTargetMatches = (
   values: Iterable<AwsIamPermissionTargetMatch>,
@@ -160,23 +122,6 @@ const strongerTargetMatch = (
   uniqueTargetMatches(
     [current, next].filter((value): value is AwsIamPermissionTargetMatch => value !== undefined),
   )[0] ?? next;
-
-const toArrayOfStrings = (value: unknown): string[] => {
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return [value];
-  }
-
-  if (!isArrayOfUnknown(value)) {
-    return [];
-  }
-
-  return unique(
-    value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0),
-  );
-};
-
-const resourceTypeOf = (node: TgNodeAttributes | undefined): string | undefined =>
-  node?.terraform?.resource;
 
 const isTraversableIamResource = (node: TgNodeAttributes | undefined): boolean => {
   const resourceType = resourceTypeOf(node);
@@ -230,134 +175,84 @@ const matchCertaintyForPattern = (pattern: string, candidate: string): number =>
   return boundedPercentage((constrainedCharacterCount / Math.max(candidate.length, 1)) * 100);
 };
 
-const parseJsonObject = (value: string): Record<string, unknown> | undefined => {
-  try {
-    const parsed = JSON.parse(value);
-    return isObjectRecord(parsed) ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const parseJsonArrayOfStrings = (value: unknown): string[] => {
-  if (!isArrayOfUnknown(value)) {
-    return [];
-  }
-
-  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
-};
-
-const collectTerraformStateValueCandidates = (
-  node: TgNodeAttributes,
-): Array<Record<string, unknown>> => {
-  const candidates: Array<Record<string, unknown>> = [];
-  const effectiveValues = node.terraform?.state?.effective?.values;
-  if (isTerraformValues(effectiveValues)) {
-    candidates.push(effectiveValues);
-  }
-
-  for (const instance of node.terraform?.state?.instances ?? []) {
-    if (isTerraformValues(instance.values)) {
-      candidates.push(instance.values);
-    }
-  }
-
-  return candidates;
-};
-
-const resolveBucketArn = (node: TgNodeAttributes): string | undefined => {
-  const directArn = resolveNodeArn(node);
-  if (directArn) {
-    return directArn;
-  }
-
-  const values = node.terraform?.state?.effective?.values;
-  if (!isTerraformValues(values)) {
-    return undefined;
-  }
-
-  return typeof values.bucket === 'string' ? `arn:aws:s3:::${values.bucket}` : undefined;
-};
-
 const resolveTargetNames = (node: TgNodeAttributes): string[] => {
   const valueCandidates = collectTerraformStateValueCandidates(node);
 
-  switch (node.terraform?.resource) {
-    case 'aws_s3_bucket':
-      return unique(
-        valueCandidates
-          .map((values) => values.bucket)
-          .filter((value): value is string => typeof value === 'string'),
-      );
-    case 'aws_sqs_queue':
-      return unique(
-        valueCandidates
-          .map((values) => values.name)
-          .filter((value): value is string => typeof value === 'string'),
-      );
-    case 'aws_cloudwatch_event_bus':
-      return unique(
-        valueCandidates
-          .map((values) => values.name)
-          .filter((value): value is string => typeof value === 'string'),
-      );
-    default:
-      return [];
+  const resources = Object.keys(Resources);
+  if (resources.includes(node.terraform?.resource ?? '')) {
+    return Resources[node.terraform?.resource as string].resolveTargetNames(valueCandidates);
   }
-};
+  return Resources.standard.resolveTargetNames(valueCandidates);
 
-const queueNameFromSqsArn = (arn: string): string | undefined => {
-  const match = arn.match(/^arn:[^:]*:sqs:[^:]*:[^:]*:(.+)$/);
-  return match?.[1];
+  // switch (node.terraform?.resource) {
+  //   case 'aws_s3_bucket':
+  //     return unique(
+  //       valueCandidates
+  //         .map((values) => values.bucket)
+  //         .filter((value): value is string => typeof value === 'string'),
+  //     );
+  //   case 'aws_sqs_queue':
+  //     return unique(
+  //       valueCandidates
+  //         .map((values) => values.name)
+  //         .filter((value): value is string => typeof value === 'string'),
+  //     );
+  //   case 'aws_cloudwatch_event_bus':
+  //     return unique(
+  //       valueCandidates
+  //         .map((values) => values.name)
+  //         .filter((value): value is string => typeof value === 'string'),
+  //     );
+  //   default:
+  //     return [];
+  // }
 };
 
 const resourceNamePatternFromArnPattern = (
   resourceType: string,
   resourcePattern: string,
 ): string | undefined => {
-  switch (resourceType) {
-    case 'aws_sqs_queue': {
-      const match = resourcePattern.match(/^arn:[^:]*:sqs:[^:]*:[^:]*:(.+)$/);
-      return match?.[1];
-    }
-    case 'aws_cloudwatch_event_bus': {
-      const match = resourcePattern.match(/^arn:[^:]*:events:[^:]*:[^:]*:event-bus\/(.+)$/);
-      return match?.[1];
-    }
-    case 'aws_s3_bucket': {
-      const match = resourcePattern.match(/^arn:[^:]*:s3:::(.+?)(?:\/.*)?$/);
-      return match?.[1];
-    }
-    default:
-      return undefined;
+  const resources = Object.keys(Resources);
+  if (resources.includes(resourceType)) {
+    return Resources[resourceType].resourceNamePatternFromArnPattern(resourcePattern);
   }
+  return Resources.standard.resourceNamePatternFromArnPattern(resourcePattern);
 };
 
 const resolveSupportedTargetArns = (node: TgNodeAttributes): string[] => {
   const valueCandidates = collectTerraformStateValueCandidates(node);
 
-  switch (node.terraform?.resource) {
-    case 'aws_s3_bucket': {
-      const bucketArn = resolveBucketArn(node);
-      return bucketArn ? unique([bucketArn, `${bucketArn}/*`]) : [];
-    }
-    case 'aws_sqs_queue': {
-      return unique(
-        [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
-          (value): value is string => typeof value === 'string',
-        ),
-      );
-    }
-    case 'aws_cloudwatch_event_bus': {
-      return unique(
-        [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
-          (value): value is string => typeof value === 'string',
-        ),
-      );
-    }
-    default:
-      return [];
+  // todo: lookup Resource by key, otherwise use "other"
+  const resources = Object.keys(Resources);
+  if (resources.includes(node.terraform?.resource ?? '')) {
+    return Resources[node.terraform?.resource as string].resolveSupportedTargetArns(
+      node,
+      valueCandidates,
+    );
   }
+  return Resources.standard.resolveSupportedTargetArns(node, valueCandidates);
+  // switch (node.terraform?.resource) {
+  //   case 'aws_s3_bucket': {
+  //     const bucketArn = resolveBucketArn(node);
+  //     return bucketArn ? unique([bucketArn, `${bucketArn}/*`]) : [];
+  //   }
+  //   case 'aws_sqs_queue': {
+  //     return unique(
+  //       [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
+  //         (value): value is string => typeof value === 'string',
+  //       ),
+  //     );
+  //   }
+  //   case 'aws_cloudwatch_event_bus': {
+  //     return unique(
+  //       [resolveNodeArn(node), ...valueCandidates.map((values) => values.arn)].filter(
+  //         (value): value is string => typeof value === 'string',
+  //       ),
+  //     );
+  //   }
+  //   default:
+  //     return [];
+  // }
 };
 
 const collectSupportedTargets = (
@@ -372,13 +267,16 @@ const collectSupportedTargets = (
       continue;
     }
 
-    if (
-      resourceType !== 'aws_s3_bucket' &&
-      resourceType !== 'aws_sqs_queue' &&
-      resourceType !== 'aws_cloudwatch_event_bus'
-    ) {
-      continue;
-    }
+    // todo: I could re-write this so the arns or names resolution returns 0 before gaurding the specific resource types here
+    //       so we remove the hard coded resource deps / check
+    //       possibly collapse resolveTargetNames and resolveSupportedTargetArns into a single method with a returned object
+    // if (
+    //   resourceType !== 'aws_s3_bucket' &&
+    //   resourceType !== 'aws_sqs_queue' &&
+    //   resourceType !== 'aws_cloudwatch_event_bus'
+    // ) {
+    //   continue;
+    // }
 
     const arns = resolveSupportedTargetArns(node);
     const names = resolveTargetNames(node);
@@ -391,110 +289,12 @@ const collectSupportedTargets = (
       resourceType,
       arns,
       names,
-      isDeadLetterQueue: false,
+      // isDeadLetterQueue: false,
     });
   }
 
-  const sqsTargets = targets.filter((target) => target.resourceType === 'aws_sqs_queue');
-  const sqsTargetByArn = new Map<string, SupportedTarget>();
-  const sqsTargetByName = new Map<string, SupportedTarget>();
-  const sqsNodeIdByAddress = new Map<string, NodeId>();
-
-  for (const target of sqsTargets) {
-    for (const arn of target.arns) {
-      sqsTargetByArn.set(arn, target);
-    }
-    for (const name of target.names) {
-      sqsTargetByName.set(name, target);
-    }
-    const address = graph.getNodeAttributes(target.nodeId)?.terraform?.address;
-    if (address) {
-      sqsNodeIdByAddress.set(address, target.nodeId);
-      sqsNodeIdByAddress.set(normalizeTerraformAddress(address), target.nodeId);
-    }
-  }
-
-  for (const nodeId of graph.nodeIds()) {
-    const node = graph.getNodeAttributes(nodeId);
-    if (!node || resourceTypeOf(node) !== 'aws_sqs_queue') {
-      continue;
-    }
-
-    for (const values of collectTerraformStateValueCandidates(node)) {
-      const rawRedrivePolicy = values.redrive_policy;
-      const redrivePolicy =
-        typeof rawRedrivePolicy === 'string'
-          ? parseJsonObject(rawRedrivePolicy)
-          : isObjectRecord(rawRedrivePolicy)
-            ? rawRedrivePolicy
-            : undefined;
-      const deadLetterTargetArn =
-        typeof redrivePolicy?.deadLetterTargetArn === 'string'
-          ? redrivePolicy.deadLetterTargetArn
-          : undefined;
-
-      if (deadLetterTargetArn) {
-        const exactTarget = sqsTargetByArn.get(deadLetterTargetArn);
-        const deadLetterQueueName = queueNameFromSqsArn(deadLetterTargetArn);
-        const namedTarget = deadLetterQueueName
-          ? sqsTargetByName.get(deadLetterQueueName)
-          : undefined;
-        const target = exactTarget ?? namedTarget;
-
-        if (target) {
-          target.isDeadLetterQueue = true;
-        }
-      }
-
-      const rawRedriveAllowPolicy = values.redrive_allow_policy;
-      const redriveAllowPolicy =
-        typeof rawRedriveAllowPolicy === 'string'
-          ? parseJsonObject(rawRedriveAllowPolicy)
-          : isObjectRecord(rawRedriveAllowPolicy)
-            ? rawRedriveAllowPolicy
-            : undefined;
-      const sourceQueueArns = parseJsonArrayOfStrings(redriveAllowPolicy?.sourceQueueArns);
-
-      if (sourceQueueArns.length > 0) {
-        const currentTarget = sqsTargets.find((target) => target.nodeId === nodeId);
-        if (currentTarget) {
-          currentTarget.isDeadLetterQueue = true;
-        }
-      }
-
-      const redrivePolicyReference = (() => {
-        const expressions = node.terraform?.configuration?.expressions;
-        if (!isObjectRecord(expressions)) {
-          return undefined;
-        }
-
-        const expression = expressions.redrive_policy;
-        if (!isObjectRecord(expression) || !isArrayOfUnknown(expression.references)) {
-          return undefined;
-        }
-
-        return expression.references.find(
-          (reference): reference is string =>
-            typeof reference === 'string' &&
-            resolveNodeReference(reference, sqsNodeIdByAddress) !== undefined,
-        );
-      })();
-
-      if (redrivePolicyReference) {
-        const resolvedTargetNodeId = resolveNodeReference(
-          redrivePolicyReference,
-          sqsNodeIdByAddress,
-        );
-        /* istanbul ignore next -- target lookup can race only in malformed mocked graphs */
-        const resolvedTarget = resolvedTargetNodeId
-          ? /* istanbul ignore next -- malformed mocked graphs can lose the resolved target after reference resolution */
-            sqsTargets.find((target) => target.nodeId === resolvedTargetNodeId)
-          : undefined;
-        if (resolvedTarget) {
-          resolvedTarget.isDeadLetterQueue = true;
-        }
-      }
-    }
+  for (const resource of Object.values(Resources)) {
+    resource.afterCollectSupportedTargets(targets, graph);
   }
 
   return targets;
@@ -788,14 +588,16 @@ const resolveMatchedTargets = (
     };
   }
 
+  // todo: needs abstraction
   const relevantTargets = supportedTargets.filter(
     (target) =>
       capability.supportedTargetResourceTypes.includes(target.resourceType) &&
-      !(
-        (capability.capability === 'sqs_send' || capability.capability === 'sqs_read') &&
-        target.resourceType === 'aws_sqs_queue' &&
-        target.isDeadLetterQueue === true
-      ),
+      !capability.shouldSkipResolveMatchedTargets(target),
+    // !(
+    //   (capability.capability === 'sqs_send' || capability.capability === 'sqs_read') &&
+    //   target.resourceType === 'aws_sqs_queue' &&
+    //   target.isDeadLetterQueue === true
+    // ),
   );
 
   const matchedTargetModes = new Map<NodeId, AwsIamPermissionTargetMatch>();
@@ -896,11 +698,10 @@ export const normalizeAwsIamPermissionDecoratorConfig = (
   }
 
   const capabilities = isArrayOfUnknown(config.capabilities)
-    ? config.capabilities.filter(
-        (capability): capability is AwsIamPermissionCapability =>
-          typeof capability === 'string' &&
-          AWS_IAM_PERMISSION_CAPABILITIES.includes(capability as AwsIamPermissionCapability),
-      )
+    ? (config.capabilities.filter(
+        (capability) =>
+          typeof capability === 'string' && AWS_IAM_PERMISSION_CAPABILITIES().includes(capability),
+      ) as string[])
     : undefined;
 
   const subjects = isArrayOfUnknown(config.subjects)
@@ -970,16 +771,13 @@ export const evaluateAwsIamPermissions = ({
 }: {
   graph: Parameters<SemanticDecorator['extract']>[0]['graph'];
   subjectNodeId: NodeId;
-  capabilities: AwsIamPermissionCapability[];
+  capabilities: string[];
 }): AwsIamPermissionEvaluationResult => {
   const roleNodeIds = unique(collectConnectedRoleNodeIds(graph, subjectNodeId));
   const supportedTargets = collectSupportedTargets(graph);
   const skippedPolicies = new Set<string>();
   const policyNodeIds = new Set<NodeId>();
-  const matchedCapabilities = new Map<
-    AwsIamPermissionCapability,
-    AwsIamPermissionMatchedCapability
-  >();
+  const matchedCapabilities = new Map<string, AwsIamPermissionMatchedCapability>();
 
   for (const roleNodeId of roleNodeIds) {
     const { policyDocuments, skippedPolicies: roleSkippedPolicies } =
@@ -1066,11 +864,8 @@ export const __testing = {
   toArrayOfStrings,
   matchCertaintyForPattern,
   parseJsonObject,
-  parseJsonArrayOfStrings,
   collectTerraformStateValueCandidates,
-  resolveBucketArn,
   resolveTargetNames,
-  queueNameFromSqsArn,
   resourceNamePatternFromArnPattern,
   resolveSupportedTargetArns,
   collectSupportedTargets,

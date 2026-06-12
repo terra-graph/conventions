@@ -10,7 +10,10 @@ import {
 import { DirectedGraph } from 'graphology';
 import { AwsScheduleSemanticDecorator, __testing } from './AwsScheduleSemanticDecorator.js';
 
-const buildAdapter = (graph: TgGraph) =>
+type ScheduleProjectionGraph = Parameters<(typeof __testing)['collectProjectionIdsInScope']>[0];
+type ScheduleAdapter = Parameters<AwsScheduleSemanticDecorator['project']>[0]['graph'];
+
+const buildAdapter = (graph: TgGraph): ScheduleAdapter =>
   new GraphologyAdapter(
     new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
   ).withTgGraph(graph);
@@ -29,7 +32,7 @@ const createMockGraph = (
     edgeSource: (edgeId: string) => edges.find((edge) => edge.id === edgeId)?.from,
     getEdgeAttributes: (edgeId: string) =>
       edges.find((edge) => edge.id === edgeId)?.attributes ?? {},
-  }) as never;
+  }) as unknown as ScheduleProjectionGraph;
 
 describe('AwsScheduleSemanticDecorator internals', () => {
   it('should cover helper functions', () => {
@@ -200,7 +203,7 @@ describe('AwsScheduleSemanticDecorator internals', () => {
       __testing.selectBestProjectionTarget(
         graph,
         scheduleProjectionId,
-        [scheduleProjectionId, 'missingRootProjection'],
+        [scheduleProjectionId, asNodeId('missingRootProjection')],
         { confidence: 'heuristic' },
       ),
     ).toBeUndefined();
@@ -209,7 +212,7 @@ describe('AwsScheduleSemanticDecorator internals', () => {
       __testing.selectBestProjectionTarget(
         graph,
         scheduleProjectionId,
-        ['preferredProjection', 'otherProjection'],
+        [asNodeId('preferredProjection'), asNodeId('otherProjection')],
         {
           preferredScopePrefix: 'module.jobs["abi"]',
           preferredInstanceKey: 'abi-blue',
@@ -245,9 +248,14 @@ describe('AwsScheduleSemanticDecorator internals', () => {
       [],
     );
     expect(
-      __testing.selectBestProjectionTarget(tiedGraph, scheduleProjectionId, ['first', 'second'], {
-        confidence: 'heuristic',
-      }),
+      __testing.selectBestProjectionTarget(
+        tiedGraph,
+        scheduleProjectionId,
+        [asNodeId('first'), asNodeId('second')],
+        {
+          confidence: 'heuristic',
+        },
+      ),
     ).toBeUndefined();
 
     const scopeCandidate: SemanticReferenceCandidate = {

@@ -62,6 +62,7 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
       terraform: {
         resource: 'aws_sqs_queue',
         state: {
+          source: 'plan_show' as const,
           effective: {
             address: 'aws_sqs_queue.source["abi"]',
             values: {
@@ -83,7 +84,7 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
           ],
         },
       },
-    } as never;
+    };
 
     expect(__testing.collectQueueStateInstances(queueNode)).toHaveLength(2);
     expect(__testing.queueNameFromSqsArn('invalid')).toBeUndefined();
@@ -151,6 +152,7 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
           },
         },
         state: {
+          source: 'plan_show' as const,
           effective: {
             address: 'aws_sqs_queue.source["abi"]',
             values: {
@@ -188,12 +190,13 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
           ],
         },
       },
-    } as never;
+    };
 
     const targetQueueNode = {
       terraform: {
         resource: 'aws_sqs_queue',
         state: {
+          source: 'plan_show' as const,
           effective: {
             address: 'aws_sqs_queue.target',
             values: {
@@ -229,7 +232,7 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
     const mappings = __testing.collectDeadLetterMappings(
       graph,
       sourceQueueId,
-      sourceQueueNode,
+      sourceQueueNode as never,
       new Map([
         ['arn:aws:sqs:eu-west-2:123456789012:target', targetQueueId],
         ['arn:aws:sqs:eu-west-2:123456789012:ghost', ghostQueueId],
@@ -272,7 +275,7 @@ describe('AwsSqsDeadLetterSemanticDecorator internals', () => {
         [],
       ),
       targetQueueId,
-      targetQueueNode,
+      targetQueueNode as never,
       new Map([
         ['arn:aws:sqs:eu-west-2:123456789012:source', sourceQueueId],
         ['arn:aws:sqs:eu-west-2:123456789012:target', targetQueueId],
