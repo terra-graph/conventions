@@ -22,6 +22,48 @@ describe('LayoutFlowOrder.constructor', () => {
         }),
     ).toThrow(`Rule 'LayoutFlowOrder' requires options.order to be an array of string arrays`);
   });
+
+  it('should reject non-object, invalid numeric, and invalid priority options', () => {
+    expect(
+      () =>
+        new LayoutFlowOrder({
+          node: { nodeId: { eq: 'node-a' } },
+          options: 'invalid',
+        }),
+    ).toThrow(`Rule 'LayoutFlowOrder' requires options to be an object`);
+
+    expect(
+      () =>
+        new LayoutFlowOrder({
+          node: { nodeId: { eq: 'node-a' } },
+          options: {
+            flowOrder: Number.NaN,
+          },
+        }),
+    ).toThrow(`Rule 'LayoutFlowOrder' requires options.flowOrder to be a finite number`);
+
+    expect(
+      () =>
+        new LayoutFlowOrder({
+          node: { nodeId: { eq: 'node-a' } },
+          options: {
+            step: 0,
+          },
+        }),
+    ).toThrow(`Rule 'LayoutFlowOrder' requires options.step to be a positive finite number`);
+
+    expect(
+      () =>
+        new LayoutFlowOrder({
+          node: { nodeId: { eq: 'node-a' } },
+          options: {
+            orderPriority: { aws_lb: Number.POSITIVE_INFINITY },
+          },
+        }),
+    ).toThrow(
+      `Rule 'LayoutFlowOrder' requires options.orderPriority to be a record of finite numbers`,
+    );
+  });
 });
 
 describe('LayoutFlowOrder.apply', () => {
@@ -227,5 +269,88 @@ describe('LayoutFlowOrder.apply', () => {
     const result = rule.apply(nodeId, node, adapter);
 
     expect(result.getNodeAttributes(nodeId)).toEqual(node);
+  });
+
+  it('should use the default step and ignore nodes without a terraform resource', () => {
+    const resourceNodeId = asNodeId('node-resource');
+    const metadataNodeId = asNodeId('node-metadata');
+    const tg: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [resourceNodeId]: {
+          id: resourceNodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.this',
+            resource: 'aws_lambda_function',
+            name: 'this',
+          },
+        },
+        [metadataNodeId]: {
+          id: metadataNodeId,
+        },
+      },
+      edges: [],
+    };
+
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
+    const resourceNode = adapter.getNodeAttributes(resourceNodeId);
+    const metadataNode = adapter.getNodeAttributes(metadataNodeId);
+    if (!resourceNode || !metadataNode) {
+      throw new Error('Missing node attributes');
+    }
+
+    const rule = new LayoutFlowOrder({
+      node: { any: true },
+      options: {
+        order: [['aws_lb', 'aws_lambda_function']],
+      },
+    });
+
+    rule.match(resourceNodeId, resourceNode, adapter);
+    const resourceResult = rule.apply(resourceNodeId, resourceNode, adapter);
+    expect(resourceResult.getNodeAttributes(resourceNodeId)?.hints?.layout?.flowOrder).toBe(20);
+
+    rule.match(metadataNodeId, metadataNode, adapter);
+    const metadataResult = rule.apply(metadataNodeId, metadataNode, adapter);
+    expect(metadataResult.getNodeAttributes(metadataNodeId)).toEqual(metadataNode);
+  });
+
+  it('should allow order to be omitted entirely', () => {
+    const nodeId = asNodeId('node-priority-only');
+    const tg: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [nodeId]: {
+          id: nodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_s3_bucket.this',
+            resource: 'aws_s3_bucket',
+            name: 'this',
+          },
+        },
+      },
+      edges: [],
+    };
+
+    const adapter = new GraphologyAdapter().withTgGraph(tg);
+    const node = adapter.getNodeAttributes(nodeId);
+    if (!node) {
+      throw new Error('Missing node attributes');
+    }
+
+    const rule = new LayoutFlowOrder({
+      node: { any: true },
+      options: {
+        orderPriority: { aws_s3_bucket: 15 },
+      },
+    });
+
+    rule.match(nodeId, node, adapter);
+    const result = rule.apply(nodeId, node, adapter);
+    expect(result.getNodeAttributes(nodeId)?.hints?.layout?.flowOrder).toBe(15);
   });
 });

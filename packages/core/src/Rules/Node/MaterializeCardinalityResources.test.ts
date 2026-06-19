@@ -3,6 +3,7 @@ import {
   GraphologyAdapter,
   TG_SCHEMA_VERSION,
   type TgGraph,
+  asNodeId,
   edgeIdFrom,
   tgNodeIdFrom,
 } from '@terra-graph/core';
@@ -20,6 +21,48 @@ const resolve = (graph: TgGraph): TgGraph => {
 };
 
 describe('MaterializeCardinalityResources', () => {
+  it('should no-op when apply is invoked before matching or from a non-leading node', () => {
+    const firstNodeId = asNodeId('first');
+    const secondNodeId = asNodeId('second');
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [firstNodeId]: {
+          id: firstNodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.first',
+            resource: 'aws_sqs_queue',
+            name: 'first',
+          },
+        },
+        [secondNodeId]: {
+          id: secondNodeId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.second',
+            resource: 'aws_sqs_queue',
+            name: 'second',
+          },
+        },
+      },
+      edges: [],
+    };
+    const adapter = new GraphologyAdapter().withTgGraph(graph);
+    const rule = new MaterializeCardinalityResources({ node: { any: true } });
+    const firstNode = adapter.getNodeAttributes(firstNodeId);
+    const secondNode = adapter.getNodeAttributes(secondNodeId);
+    if (!firstNode || !secondNode) {
+      throw new Error('Missing node attributes');
+    }
+
+    expect(rule.apply(firstNodeId, firstNode, adapter)).toBe(adapter);
+
+    rule.match(secondNodeId, secondNode, adapter);
+    expect(rule.apply(secondNodeId, secondNode, adapter)).toBe(adapter);
+  });
+
   it('should keep graphs without cardinality families unchanged', () => {
     const source = tgNodeIdFrom('resource', 'aws_sqs_queue.source');
     const target = tgNodeIdFrom('resource', 'aws_lambda_function.target');
@@ -468,6 +511,82 @@ describe('MaterializeCardinalityResources', () => {
     expect(result.edges.some((edge) => edge.from === fanout1 && edge.to === queue)).toBe(true);
   });
 
+  it('should fan singleton sources out to cardinality members', () => {
+    const queue = tgNodeIdFrom('resource', 'aws_sqs_queue.source');
+    const consumerFamily = tgNodeIdFrom('resource', 'aws_lambda_function.consumer');
+    const consumer0 = tgNodeIdFrom('resource', 'aws_lambda_function.consumer[0]');
+    const consumer1 = tgNodeIdFrom('resource', 'aws_lambda_function.consumer[1]');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [queue]: {
+          id: queue,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.source',
+            resource: 'aws_sqs_queue',
+            name: 'source',
+          },
+        },
+        [consumerFamily]: {
+          id: consumerFamily,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.consumer',
+            resource: 'aws_lambda_function',
+            name: 'consumer',
+          },
+        },
+        [consumer0]: {
+          id: consumer0,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.consumer[0]',
+            resource: 'aws_lambda_function',
+            name: 'consumer[0]',
+          },
+        },
+        [consumer1]: {
+          id: consumer1,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.consumer[1]',
+            resource: 'aws_lambda_function',
+            name: 'consumer[1]',
+          },
+        },
+      },
+      edges: [
+        {
+          id: edgeIdFrom(queue, consumerFamily, 'queue'),
+          from: queue,
+          to: consumerFamily,
+          attributes: { relation: 'triggers' },
+        },
+        {
+          id: edgeIdFrom(consumer0, consumerFamily, 'member'),
+          from: consumer0,
+          to: consumerFamily,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(consumer1, consumerFamily, 'member'),
+          from: consumer1,
+          to: consumerFamily,
+          attributes: {},
+        },
+      ],
+    };
+
+    const result = resolve(graph);
+
+    expect(result.nodes[consumerFamily]).toBeUndefined();
+    expect(result.edges.some((edge) => edge.from === queue && edge.to === consumer0)).toBe(true);
+    expect(result.edges.some((edge) => edge.from === queue && edge.to === consumer1)).toBe(true);
+  });
+
   it('should fail closed when cardinality sets cannot be matched safely', () => {
     const replayFamily = tgNodeIdFrom('resource', 'aws_sqs_queue.replay');
     const replay0 = tgNodeIdFrom('resource', 'aws_sqs_queue.replay[0]');
@@ -540,5 +659,213 @@ describe('MaterializeCardinalityResources', () => {
     const result = resolve(graph);
     expect(result.nodes[replayFamily]).toBeDefined();
     expect(result.edges.some((edge) => edge.from === replay0 && edge.to === deadBlue)).toBe(false);
+  });
+
+  it('should fail closed when keyed families overlap only partially', () => {
+    const sourceFamily = tgNodeIdFrom('resource', 'aws_lambda_function.source');
+    const sourceBlue = tgNodeIdFrom('resource', 'aws_lambda_function.source["blue"]');
+    const sourceGreen = tgNodeIdFrom('resource', 'aws_lambda_function.source["green"]');
+    const targetFamily = tgNodeIdFrom('resource', 'aws_sqs_queue.target');
+    const targetBlue = tgNodeIdFrom('resource', 'aws_sqs_queue.target["blue"]');
+    const targetRed = tgNodeIdFrom('resource', 'aws_sqs_queue.target["red"]');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [sourceFamily]: {
+          id: sourceFamily,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.source',
+            resource: 'aws_lambda_function',
+            name: 'source',
+          },
+        },
+        [sourceBlue]: {
+          id: sourceBlue,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.source["blue"]',
+            resource: 'aws_lambda_function',
+            name: 'source["blue"]',
+          },
+        },
+        [sourceGreen]: {
+          id: sourceGreen,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.source["green"]',
+            resource: 'aws_lambda_function',
+            name: 'source["green"]',
+          },
+        },
+        [targetFamily]: {
+          id: targetFamily,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.target',
+            resource: 'aws_sqs_queue',
+            name: 'target',
+          },
+        },
+        [targetBlue]: {
+          id: targetBlue,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.target["blue"]',
+            resource: 'aws_sqs_queue',
+            name: 'target["blue"]',
+          },
+        },
+        [targetRed]: {
+          id: targetRed,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.target["red"]',
+            resource: 'aws_sqs_queue',
+            name: 'target["red"]',
+          },
+        },
+      },
+      edges: [
+        {
+          id: edgeIdFrom(sourceBlue, sourceFamily, 'member'),
+          from: sourceBlue,
+          to: sourceFamily,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(sourceGreen, sourceFamily, 'member'),
+          from: sourceGreen,
+          to: sourceFamily,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(targetBlue, targetFamily, 'member'),
+          from: targetBlue,
+          to: targetFamily,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(targetRed, targetFamily, 'member'),
+          from: targetRed,
+          to: targetFamily,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(sourceFamily, targetFamily, 'routes'),
+          from: sourceFamily,
+          to: targetFamily,
+          attributes: { relation: 'routes' },
+        },
+      ],
+    };
+
+    const result = resolve(graph);
+
+    expect(result.nodes[sourceFamily]).toBeDefined();
+    expect(result.nodes[targetFamily]).toBeDefined();
+    expect(result.edges.some((edge) => edge.from === sourceBlue && edge.to === targetBlue)).toBe(
+      false,
+    );
+  });
+
+  it('should fall back when string-key instances are missing from terraform state ordering', () => {
+    const family = tgNodeIdFrom('resource', 'aws_lambda_function.worker');
+    const blue = tgNodeIdFrom('resource', 'aws_lambda_function.worker["blue"]');
+    const green = tgNodeIdFrom('resource', 'aws_lambda_function.worker["green"]');
+    const queue = tgNodeIdFrom('resource', 'aws_sqs_queue.jobs');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [family]: {
+          id: family,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.worker',
+            resource: 'aws_lambda_function',
+            name: 'worker',
+          },
+        },
+        [blue]: {
+          id: blue,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.worker["blue"]',
+            resource: 'aws_lambda_function',
+            name: 'worker["blue"]',
+            state: {
+              source: 'plan_show',
+              effective: null,
+              instances: [
+                {
+                  address: 'aws_lambda_function.worker["missing"]',
+                  index: 'missing',
+                  values: null,
+                },
+              ],
+            },
+          },
+        },
+        [green]: {
+          id: green,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.worker["green"]',
+            resource: 'aws_lambda_function',
+            name: 'worker["green"]',
+            state: {
+              source: 'plan_show',
+              effective: null,
+              instances: [
+                {
+                  address: 'aws_lambda_function.worker["missing"]',
+                  index: 'missing',
+                  values: null,
+                },
+              ],
+            },
+          },
+        },
+        [queue]: {
+          id: queue,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_sqs_queue.jobs',
+            resource: 'aws_sqs_queue',
+            name: 'jobs',
+          },
+        },
+      },
+      edges: [
+        {
+          id: edgeIdFrom(blue, family, 'member'),
+          from: blue,
+          to: family,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(green, family, 'member'),
+          from: green,
+          to: family,
+          attributes: {},
+        },
+        {
+          id: edgeIdFrom(family, queue, 'jobs'),
+          from: family,
+          to: queue,
+          attributes: { relation: 'consumes' },
+        },
+      ],
+    };
+
+    const result = resolve(graph);
+
+    expect(result.nodes[family]).toBeUndefined();
+    expect(result.edges.some((edge) => edge.from === blue && edge.to === queue)).toBe(true);
+    expect(result.edges.some((edge) => edge.from === green && edge.to === queue)).toBe(true);
   });
 });

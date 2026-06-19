@@ -83,6 +83,14 @@ describe('aws provider', () => {
     expect(AwsEdgeSemantics).toMatchObject(DefaultEdgeSemantics);
     expect(AwsEdgeSemantics.Authorizes.role).toBe('supporting');
     expect(AwsEdgeSemantics.Accesses.role).toBe('primary');
+    expect(AwsEdgeSemantics.Reads).toEqual({
+      semantic: 'reads',
+      role: 'primary',
+    });
+    expect(AwsEdgeSemantics.Writes).toEqual({
+      semantic: 'writes',
+      role: 'primary',
+    });
     expect(AwsEdgeSemantics.ObservedBy.role).toBe('supporting');
     expect(AwsEdgeSemantics.DeadLettersTo).toEqual({
       semantic: 'dead_letters_to',

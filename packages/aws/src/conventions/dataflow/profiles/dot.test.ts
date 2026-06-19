@@ -96,11 +96,7 @@ describe('dataflow dot profile', () => {
     expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['final']);
 
     const baseProfile = serialized.usesProfiles?.[0];
-    expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual([
-      'pre',
-      'main',
-      'final',
-    ]);
+    expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual(['pre', 'main']);
     expect(baseProfile?.plugins).toEqual([
       { plugin: S3Plugin.id },
       {

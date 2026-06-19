@@ -7,12 +7,12 @@ import {
   asEdgeId,
   asNodeId,
 } from '@terra-graph/core';
-import { DirectedGraph } from 'graphology';
+import { MultiDirectedGraph } from 'graphology';
 import { AwsIamPermissionSemanticDecorator } from './AwsIamPermissionSemanticDecorator.js';
 
 const buildAdapter = (graph: TgGraph) =>
   new GraphologyAdapter(
-    new DirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
+    new MultiDirectedGraph() as unknown as ConstructorParameters<typeof GraphologyAdapter>[0],
   ).withTgGraph(graph);
 
 const findFactEdge = (graph: AdapterOperations, nodeId: NodeId, kind: string) =>
@@ -36,6 +36,74 @@ const findFactEdgeToTarget = (
         graph.getEdgeAttributes(edgeId)?.semantic?.facts?.some((fact) => fact.kind === kind),
     );
 
+const findFactEdgeByFactEndpoints = (
+  graph: AdapterOperations,
+  factFromNodeId: NodeId,
+  factToNodeId: NodeId,
+  kind: string,
+) => {
+  const visited = new Set<string>();
+
+  for (const nodeId of graph.nodeIds()) {
+    for (const edgeId of graph.outEdges(nodeId)) {
+      if (visited.has(String(edgeId))) {
+        continue;
+      }
+      visited.add(String(edgeId));
+
+      if (
+        graph
+          .getEdgeAttributes(edgeId)
+          ?.semantic?.facts?.some(
+            (fact) =>
+              fact.kind === kind && fact.from === factFromNodeId && fact.to === factToNodeId,
+          )
+      ) {
+        return edgeId;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const findFactByEndpoints = (
+  graph: AdapterOperations,
+  factFromNodeId: NodeId,
+  factToNodeId: NodeId,
+  kind: string,
+) => {
+  const edgeId = findFactEdgeByFactEndpoints(graph, factFromNodeId, factToNodeId, kind);
+  if (!edgeId) {
+    return undefined;
+  }
+
+  return graph
+    .getEdgeAttributes(edgeId)
+    ?.semantic?.facts?.find(
+      (fact) => fact.kind === kind && fact.from === factFromNodeId && fact.to === factToNodeId,
+    );
+};
+
+const findProjectedFactEdgesToTarget = (
+  graph: AdapterOperations,
+  fromNodeId: NodeId,
+  toNodeId: NodeId,
+  kind: string,
+) =>
+  graph
+    .outEdges(fromNodeId)
+    .filter(
+      (edgeId) =>
+        graph.edgeTarget(edgeId) === toNodeId &&
+        graph
+          .getEdgeAttributes(edgeId)
+          ?.projection?.semantics?.facts?.some((fact) => fact.kind === kind),
+    );
+
+const findDirectedEdgesBetween = (graph: AdapterOperations, fromNodeId: NodeId, toNodeId: NodeId) =>
+  graph.outEdges(fromNodeId).filter((edgeId) => graph.edgeTarget(edgeId) === toNodeId);
+
 const requireDefined = <T>(value: T | undefined): T => {
   expect(value).toBeDefined();
   if (value === undefined) {
@@ -45,7 +113,7 @@ const requireDefined = <T>(value: T | undefined): T => {
 };
 
 describe('AwsIamPermissionSemanticDecorator', () => {
-  it('should derive writes_to facts from lambda role policies and annotate existing projection edges', () => {
+  it('should derive writes_to facts from lambda role policies and annotate an existing projection edge', () => {
     const lambdaId = asNodeId('lambda');
     const roleId = asNodeId('role');
     const inlinePolicyId = asNodeId('inline-policy');
@@ -253,6 +321,14 @@ describe('AwsIamPermissionSemanticDecorator', () => {
       },
     });
     expect(
+      findProjectedFactEdgesToTarget(
+        projected,
+        lambdaProjectionId,
+        bucketProjectionId,
+        'writes_to',
+      ),
+    ).toEqual([existingProjectionEdgeId]);
+    expect(
       projected
         .outEdges(otherProjectionId)
         .some((edgeId) =>
@@ -263,6 +339,409 @@ describe('AwsIamPermissionSemanticDecorator', () => {
             ),
         ),
     ).toBe(false);
+  });
+
+  it('should project separate reads_from and writes_to edges for the same dynamodb target', () => {
+    const lambdaId = asNodeId('lambda-dynamodb');
+    const roleId = asNodeId('role-dynamodb');
+    const inlinePolicyId = asNodeId('inline-policy-dynamodb');
+    const tableId = asNodeId('table-dynamodb');
+    const lambdaProjectionId = asNodeId('projection-lambda-dynamodb');
+    const tableProjectionId = asNodeId('projection-table-dynamodb');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [lambdaId]: {
+          id: lambdaId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.consumer',
+            resource: 'aws_lambda_function',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_lambda_function.consumer',
+                values: {},
+              },
+              instances: [],
+            },
+          },
+        },
+        [roleId]: {
+          id: roleId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_iam_role.consumer',
+            resource: 'aws_iam_role',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_iam_role.consumer',
+                values: {},
+              },
+              instances: [],
+            },
+          },
+        },
+        [inlinePolicyId]: {
+          id: inlinePolicyId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_iam_role_policy.consumer',
+            resource: 'aws_iam_role_policy',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_iam_role_policy.consumer',
+                values: {
+                  policy: JSON.stringify({
+                    Version: '2012-10-17',
+                    Statement: [
+                      {
+                        Effect: 'Allow',
+                        Action: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'],
+                        Resource: 'arn:aws:dynamodb:eu-west-2:123456789012:table/sequence-table',
+                      },
+                    ],
+                  }),
+                },
+              },
+              instances: [],
+            },
+          },
+        },
+        [tableId]: {
+          id: tableId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_dynamodb_table.sequence_table',
+            resource: 'aws_dynamodb_table',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_dynamodb_table.sequence_table',
+                values: {
+                  arn: 'arn:aws:dynamodb:eu-west-2:123456789012:table/sequence-table',
+                  name: 'sequence-table',
+                },
+              },
+              instances: [],
+            },
+          },
+        },
+        [lambdaProjectionId]: {
+          id: lambdaProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.lambda:consumer',
+            label: 'consumer',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.lambda',
+              rootNodeId: lambdaId,
+            },
+          },
+        },
+        [tableProjectionId]: {
+          id: tableProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.dynamodb:sequence_table',
+            label: 'sequence_table',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.dynamodb',
+              rootNodeId: tableId,
+            },
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('lambda-role-dynamodb'),
+          from: lambdaId,
+          to: roleId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('role-policy-dynamodb'),
+          from: roleId,
+          to: inlinePolicyId,
+          attributes: {},
+        },
+      ],
+    };
+
+    const decorator = new AwsIamPermissionSemanticDecorator({
+      subjects: [
+        {
+          resourceTypes: ['aws_lambda_function'],
+          projectionNames: ['aws.lambda'],
+        },
+      ],
+      capabilities: ['dynamodb_read', 'dynamodb_write'],
+    });
+
+    const extracted = decorator.extract({ graph: buildAdapter(graph) });
+    requireDefined(findFactEdgeByFactEndpoints(extracted, tableId, lambdaId, 'reads_from'));
+    expect(findFactByEndpoints(extracted, tableId, lambdaId, 'reads_from')).toMatchObject({
+      kind: 'reads_from',
+      from: tableId,
+      to: lambdaId,
+      attributes: {
+        capability: 'dynamodb_read',
+        subjectNodeId: lambdaId,
+        targetNodeId: tableId,
+      },
+    });
+    requireDefined(findFactEdgeByFactEndpoints(extracted, lambdaId, tableId, 'writes_to'));
+    expect(findFactByEndpoints(extracted, lambdaId, tableId, 'writes_to')).toMatchObject({
+      kind: 'writes_to',
+      from: lambdaId,
+      to: tableId,
+      attributes: {
+        capability: 'dynamodb_write',
+        subjectNodeId: lambdaId,
+        targetNodeId: tableId,
+      },
+    });
+
+    const projected = decorator.project({ graph: extracted });
+
+    const readEdgeIds = findProjectedFactEdgesToTarget(
+      projected,
+      tableProjectionId,
+      lambdaProjectionId,
+      'reads_from',
+    );
+    const writeEdgeIds = findProjectedFactEdgesToTarget(
+      projected,
+      lambdaProjectionId,
+      tableProjectionId,
+      'writes_to',
+    );
+
+    expect(readEdgeIds).toHaveLength(1);
+    expect(writeEdgeIds).toHaveLength(1);
+    expect(readEdgeIds[0]).not.toBe(writeEdgeIds[0]);
+    expect(findDirectedEdgesBetween(projected, tableProjectionId, lambdaProjectionId)).toEqual(
+      expect.arrayContaining([readEdgeIds[0]]),
+    );
+    expect(findDirectedEdgesBetween(projected, lambdaProjectionId, tableProjectionId)).toEqual(
+      expect.arrayContaining([writeEdgeIds[0]]),
+    );
+  });
+
+  it('should reuse an existing projection edge for one permission fact kind and create a second for the other', () => {
+    const lambdaId = asNodeId('lambda-existing-s3');
+    const roleId = asNodeId('role-existing-s3');
+    const inlinePolicyId = asNodeId('inline-policy-existing-s3');
+    const bucketId = asNodeId('bucket-existing-s3');
+    const lambdaProjectionId = asNodeId('projection-lambda-existing-s3');
+    const bucketProjectionId = asNodeId('projection-bucket-existing-s3');
+    const existingProjectionEdgeId = asEdgeId('projection-existing-s3');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [lambdaId]: {
+          id: lambdaId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_lambda_function.copy',
+            resource: 'aws_lambda_function',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_lambda_function.copy',
+                values: {},
+              },
+              instances: [],
+            },
+          },
+        },
+        [roleId]: {
+          id: roleId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_iam_role.copy',
+            resource: 'aws_iam_role',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_iam_role.copy',
+                values: {},
+              },
+              instances: [],
+            },
+          },
+        },
+        [inlinePolicyId]: {
+          id: inlinePolicyId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_iam_role_policy.copy',
+            resource: 'aws_iam_role_policy',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_iam_role_policy.copy',
+                values: {
+                  policy: JSON.stringify({
+                    Version: '2012-10-17',
+                    Statement: [
+                      {
+                        Effect: 'Allow',
+                        Action: ['s3:GetObject', 's3:PutObject'],
+                        Resource: ['arn:aws:s3:::artifacts', 'arn:aws:s3:::artifacts/*'],
+                      },
+                    ],
+                  }),
+                },
+              },
+              instances: [],
+            },
+          },
+        },
+        [bucketId]: {
+          id: bucketId,
+          terraform: {
+            kind: 'resource',
+            address: 'aws_s3_bucket.artifacts',
+            resource: 'aws_s3_bucket',
+            state: {
+              source: 'plan_show',
+              effective: {
+                address: 'aws_s3_bucket.artifacts',
+                values: {
+                  arn: 'arn:aws:s3:::artifacts',
+                  bucket: 'artifacts',
+                },
+              },
+              instances: [],
+            },
+          },
+        },
+        [lambdaProjectionId]: {
+          id: lambdaProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.lambda:copy',
+            label: 'copy',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.lambda',
+              rootNodeId: lambdaId,
+            },
+          },
+        },
+        [bucketProjectionId]: {
+          id: bucketProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.s3:artifacts',
+            label: 'artifacts',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.s3',
+              rootNodeId: bucketId,
+            },
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('lambda-role-existing-s3'),
+          from: lambdaId,
+          to: roleId,
+          attributes: {},
+        },
+        {
+          id: asEdgeId('role-policy-existing-s3'),
+          from: roleId,
+          to: inlinePolicyId,
+          attributes: {},
+        },
+        {
+          id: existingProjectionEdgeId,
+          from: lambdaProjectionId,
+          to: bucketProjectionId,
+          attributes: {
+            projection: {
+              layer: 'core',
+              relationship: {
+                relation: 'accesses',
+                source: 'derived',
+              },
+            },
+          },
+        },
+      ],
+    };
+
+    const decorator = new AwsIamPermissionSemanticDecorator({
+      subjects: [
+        {
+          resourceTypes: ['aws_lambda_function'],
+          projectionNames: ['aws.lambda'],
+        },
+      ],
+      capabilities: ['s3_read', 's3_write'],
+    });
+
+    const extracted = decorator.extract({ graph: buildAdapter(graph) });
+    requireDefined(findFactEdgeByFactEndpoints(extracted, bucketId, lambdaId, 'reads_from'));
+    expect(findFactByEndpoints(extracted, bucketId, lambdaId, 'reads_from')).toMatchObject({
+      kind: 'reads_from',
+      from: bucketId,
+      to: lambdaId,
+      attributes: {
+        capability: 's3_read',
+        subjectNodeId: lambdaId,
+        targetNodeId: bucketId,
+      },
+    });
+    requireDefined(findFactEdgeByFactEndpoints(extracted, lambdaId, bucketId, 'writes_to'));
+    expect(findFactByEndpoints(extracted, lambdaId, bucketId, 'writes_to')).toMatchObject({
+      kind: 'writes_to',
+      from: lambdaId,
+      to: bucketId,
+      attributes: {
+        capability: 's3_write',
+        subjectNodeId: lambdaId,
+        targetNodeId: bucketId,
+      },
+    });
+
+    const projected = decorator.project({ graph: extracted });
+
+    const readEdgeIds = findProjectedFactEdgesToTarget(
+      projected,
+      bucketProjectionId,
+      lambdaProjectionId,
+      'reads_from',
+    );
+    const writeEdgeIds = findProjectedFactEdgesToTarget(
+      projected,
+      lambdaProjectionId,
+      bucketProjectionId,
+      'writes_to',
+    );
+
+    expect(readEdgeIds).toHaveLength(1);
+    expect(writeEdgeIds).toHaveLength(1);
+    expect(new Set([readEdgeIds[0], writeEdgeIds[0]]).size).toBe(2);
+    expect(writeEdgeIds).toEqual([existingProjectionEdgeId]);
+    expect(readEdgeIds).not.toContain(existingProjectionEdgeId);
+    expect(
+      findDirectedEdgesBetween(projected, lambdaProjectionId, bucketProjectionId),
+    ).toHaveLength(1);
+    expect(
+      findDirectedEdgesBetween(projected, bucketProjectionId, lambdaProjectionId),
+    ).toHaveLength(1);
   });
 
   it('should derive reads_from facts from lambda role policies and create projection edges for readable queues', () => {
@@ -413,12 +892,12 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     });
 
     const extracted = decorator.extract({ graph: buildAdapter(graph) });
-    const rawFactEdgeId = findFactEdge(extracted, lambdaId, 'reads_from');
+    const rawFactEdgeId = findFactEdgeByFactEndpoints(extracted, queueId, lambdaId, 'reads_from');
     const factEdgeId = requireDefined(rawFactEdgeId);
     expect(extracted.getEdgeAttributes(factEdgeId)?.semantic?.facts?.[0]).toMatchObject({
       kind: 'reads_from',
-      from: lambdaId,
-      to: queueId,
+      from: queueId,
+      to: lambdaId,
       source: 'permission',
       confidence: 'capability',
       attributes: {
@@ -430,7 +909,7 @@ describe('AwsIamPermissionSemanticDecorator', () => {
 
     const projected = decorator.project({ graph: extracted });
     const projectedEdgeId = projected
-      .outEdges(lambdaProjectionId)
+      .outEdges(queueProjectionId)
       .find((edgeId) =>
         projected
           .getEdgeAttributes(edgeId)
@@ -438,16 +917,16 @@ describe('AwsIamPermissionSemanticDecorator', () => {
       );
 
     const definedProjectedEdgeId = requireDefined(projectedEdgeId);
-    expect(projected.edgeTarget(definedProjectedEdgeId)).toBe(queueProjectionId);
+    expect(projected.edgeTarget(definedProjectedEdgeId)).toBe(lambdaProjectionId);
     expect(
       projected.getEdgeAttributes(definedProjectedEdgeId)?.projection?.semantics?.facts?.[0],
     ).toMatchObject({
       kind: 'reads_from',
-      from: lambdaProjectionId,
-      to: queueProjectionId,
+      from: queueProjectionId,
+      to: lambdaProjectionId,
       attributes: {
-        rawFrom: lambdaId,
-        rawTo: queueId,
+        rawFrom: queueId,
+        rawTo: lambdaId,
       },
     });
   });
@@ -610,10 +1089,129 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     });
 
     const extracted = decorator.extract({ graph: buildAdapter(graph) });
-    expect(findFactEdgeToTarget(extracted, lambdaId, queueId, 'reads_from')).toBeDefined();
+    expect(findFactEdgeToTarget(extracted, queueId, lambdaId, 'reads_from')).toBeDefined();
     expect(
-      findFactEdgeToTarget(extracted, lambdaId, deadLetterQueueId, 'reads_from'),
+      findFactEdgeToTarget(extracted, deadLetterQueueId, lambdaId, 'reads_from'),
     ).toBeUndefined();
+  });
+
+  it('should project permission facts without explicit subject and target attributes', () => {
+    const lambdaId = asNodeId('lambda-project-fallback');
+    const queueId = asNodeId('queue-project-fallback');
+    const lambdaProjectionId = asNodeId('projection-lambda-project-fallback');
+    const queueProjectionId = asNodeId('projection-queue-project-fallback');
+
+    const graph: TgGraph = {
+      schemaVersion: TG_SCHEMA_VERSION,
+      description: {},
+      nodes: {
+        [lambdaId]: {
+          id: lambdaId,
+          semantic: {
+            [AwsIamPermissionSemanticDecorator.id]: {
+              capabilities: [
+                {
+                  capability: 'sqs_read',
+                  factKind: 'reads_from',
+                  direction: 'target_to_subject',
+                  roleNodeIds: [],
+                  policyNodeIds: [],
+                  targetNodeIds: [queueId],
+                  targetMatches: [],
+                  matchedActionPatterns: [],
+                  matchedResourcePatterns: [],
+                  unresolvedResourcePatterns: [],
+                  projectionNames: ['aws.lambda'],
+                },
+              ],
+            },
+          },
+        },
+        [queueId]: {
+          id: queueId,
+        },
+        [lambdaProjectionId]: {
+          id: lambdaProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.lambda:fallback',
+            label: 'fallback',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.lambda',
+              rootNodeId: lambdaId,
+            },
+          },
+        },
+        [queueProjectionId]: {
+          id: queueProjectionId,
+          projection: {
+            layer: 'core',
+            address: 'aws.sqs:fallback',
+            label: 'fallback',
+            derivation: {
+              source: 'plugin',
+              projectionName: 'aws.sqs',
+              rootNodeId: queueId,
+            },
+          },
+        },
+      },
+      edges: [
+        {
+          id: asEdgeId('raw-permission-fallback'),
+          from: queueId,
+          to: lambdaId,
+          attributes: {
+            semantic: {
+              facts: [
+                {
+                  kind: 'reads_from',
+                  from: queueId,
+                  to: lambdaId,
+                  source: 'permission',
+                  confidence: 'capability',
+                  decorator: AwsIamPermissionSemanticDecorator.id,
+                  attributes: {
+                    capability: 'sqs_read',
+                    matchMode: 'exact_arn',
+                    matchCertainty: 100,
+                    principalRoleNodeIds: [],
+                    policyNodeIds: [],
+                    matchedActionPatterns: ['sqs:ReceiveMessage'],
+                    matchedResourcePatterns: ['arn:aws:sqs:eu-west-2:123456789012:fallback'],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+
+    const projected = new AwsIamPermissionSemanticDecorator({
+      subjects: [{ resourceTypes: ['aws_lambda_function'], projectionNames: ['aws.lambda'] }],
+      capabilities: ['sqs_read'],
+    }).project({
+      graph: buildAdapter(graph),
+    });
+
+    const projectedEdgeId = requireDefined(
+      findProjectedFactEdgesToTarget(
+        projected,
+        queueProjectionId,
+        lambdaProjectionId,
+        'reads_from',
+      ).at(0),
+    );
+
+    expect(
+      projected.getEdgeAttributes(projectedEdgeId)?.projection?.semantics?.facts?.[0],
+    ).toMatchObject({
+      kind: 'reads_from',
+      from: queueProjectionId,
+      to: lambdaProjectionId,
+    });
   });
 
   it('should derive publishes_to facts through instance profiles and create projection edges when absent', () => {

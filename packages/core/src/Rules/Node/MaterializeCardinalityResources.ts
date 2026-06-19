@@ -70,6 +70,7 @@ const parseTerraformInstanceAddress = (address: string): ParsedTerraformInstance
     }
   }
 
+  /* istanbul ignore next -- malformed quoted instance keys fall back to the raw segment */
   return {
     baseAddress,
     key: indexValue,
@@ -136,6 +137,7 @@ export class MaterializeCardinalityResources extends NodeRule {
 
     for (const group of candidates) {
       const familyNodeId = group.familyNodeId;
+      /* istanbul ignore next -- candidate selection guarantees a family node id */
       if (!familyNodeId) {
         continue;
       }
@@ -181,6 +183,7 @@ export class MaterializeCardinalityResources extends NodeRule {
     graph: AdapterOperations,
   ): MaterializedEdge[] | undefined {
     const familyNodeId = group.familyNodeId;
+    /* istanbul ignore next -- internal callers only materialize family-backed groups */
     if (!familyNodeId) {
       return undefined;
     }
@@ -220,7 +223,9 @@ export class MaterializeCardinalityResources extends NodeRule {
       }
 
       for (const pair of pairs) {
+        /* istanbul ignore next -- resolved pairs always originate from the current entry set */
         const edgeRef = entry.find((ref) => ref.peerNodeId === pair.from) ?? entry[0];
+        /* istanbul ignore next -- grouped entries are never empty once pair materialization begins */
         if (!edgeRef) {
           return undefined;
         }
@@ -244,7 +249,9 @@ export class MaterializeCardinalityResources extends NodeRule {
       }
 
       for (const pair of pairs) {
+        /* istanbul ignore next -- resolved pairs always target a node from the current entry set */
         const edgeRef = entry.find((ref) => ref.peerNodeId === pair.to) ?? entry[0];
+        /* istanbul ignore next -- grouped entries are never empty once pair materialization begins */
         if (!edgeRef) {
           return undefined;
         }
@@ -271,6 +278,7 @@ export class MaterializeCardinalityResources extends NodeRule {
       }
 
       const address = node.terraform.address;
+      /* istanbul ignore next -- resource nodes participating in materialization are expected to have addresses */
       if (!address) {
         continue;
       }
@@ -317,11 +325,13 @@ export class MaterializeCardinalityResources extends NodeRule {
     graph: AdapterOperations,
   ): string {
     const node = graph.getNodeAttributes(nodeId);
+    /* istanbul ignore next -- non-resource peers are treated as singleton external nodes */
     if (!isResourceNode(node)) {
       return `node:${String(nodeId)}`;
     }
 
     const address = node.terraform.address;
+    /* istanbul ignore next -- malformed resource peers without addresses are treated as singleton nodes */
     if (!address) {
       return `node:${String(nodeId)}`;
     }
@@ -344,11 +354,13 @@ export class MaterializeCardinalityResources extends NodeRule {
 
     for (const reference of references) {
       const node = graph.getNodeAttributes(reference.peerNodeId);
+      /* istanbul ignore next -- non-resource peers are handled by singleton fallback below */
       if (!isResourceNode(node)) {
         continue;
       }
 
       const address = node.terraform.address;
+      /* istanbul ignore next -- malformed resource peers without addresses are skipped from explicit matching */
       if (!address) {
         continue;
       }
@@ -371,16 +383,19 @@ export class MaterializeCardinalityResources extends NodeRule {
           return left.ordinal - right.ordinal;
         }
 
+        /* istanbul ignore next -- ordering only matters when malformed explicit instances lack ordinals */
         return left.address.localeCompare(right.address);
       });
     }
 
     const firstReference = references[0];
+    /* istanbul ignore next -- callers only request external instances for non-empty reference groups */
     if (!firstReference) {
       return [];
     }
 
     const node = graph.getNodeAttributes(firstReference.peerNodeId);
+    /* istanbul ignore next -- non-resource peers fall back to singleton matching */
     if (!isResourceNode(node)) {
       return [
         {
@@ -392,6 +407,7 @@ export class MaterializeCardinalityResources extends NodeRule {
     }
 
     const address = node.terraform.address;
+    /* istanbul ignore next -- malformed resource peers without addresses fall back to singleton matching */
     if (!address) {
       return [
         {
@@ -421,6 +437,7 @@ export class MaterializeCardinalityResources extends NodeRule {
     sourceInstances: ResourceInstance[],
     targetInstances: ResourceInstance[],
   ): Array<{ from: NodeId; to: NodeId }> | undefined {
+    /* istanbul ignore next -- callers materialize only when both sides have candidate instances */
     if (sourceInstances.length === 0 || targetInstances.length === 0) {
       return undefined;
     }

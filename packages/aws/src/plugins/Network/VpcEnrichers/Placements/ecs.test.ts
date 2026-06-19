@@ -699,4 +699,250 @@ describe('EcsPlacementEnricher', () => {
     expect(subnetKeys).toStrictEqual(new Set<string>(['subnet-a', 'subnet-b']));
     expect(controls.suppressPlacement).toBeUndefined();
   });
+
+  it('shoud no-op reconcile for suppressed, task-definition, non-ecs, and unresolved runtime nodes', () => {
+    const taskDefinitionId = asNodeId('resource.aws_ecs_task_definition.reconcile');
+    const serviceId = asNodeId('resource.aws_ecs_service.reconcile');
+    const graph = {
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId === taskDefinitionId) {
+          return {
+            terraform: {
+              resource: 'aws_ecs_task_definition',
+            },
+          } as TgNodeAttributes;
+        }
+
+        return undefined;
+      },
+      predecessors: () => [],
+      successors: () => [],
+    } as unknown as AdapterOperations;
+
+    const context = buildContext(graph);
+
+    const suppressedControls: { suppressPlacement?: boolean } = { suppressPlacement: true };
+    const suppressedSubnetKeys = new Set<string>();
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: serviceId,
+      node: {
+        terraform: {
+          resource: 'aws_ecs_service',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys: suppressedSubnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: undefined,
+      controls: suppressedControls,
+      plannedSubnetKeysByNodeId: new Map([[taskDefinitionId, ['subnet-a']]]),
+    });
+    expect(suppressedSubnetKeys).toStrictEqual(new Set<string>());
+
+    const taskDefinitionSubnetKeys = new Set<string>();
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: taskDefinitionId,
+      node: {
+        terraform: {
+          resource: 'aws_ecs_task_definition',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys: taskDefinitionSubnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: undefined,
+      controls: {},
+      plannedSubnetKeysByNodeId: new Map(),
+    });
+    expect(taskDefinitionSubnetKeys).toStrictEqual(new Set<string>());
+
+    const nonEcsSubnetKeys = new Set<string>();
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: asNodeId('resource.aws_iam_role.reconcile'),
+      node: {
+        terraform: {
+          resource: 'aws_iam_role',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys: nonEcsSubnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: undefined,
+      controls: {},
+      plannedSubnetKeysByNodeId: new Map(),
+    });
+    expect(nonEcsSubnetKeys).toStrictEqual(new Set<string>());
+
+    const unresolvedControls: { suppressPlacement?: boolean } = {};
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: serviceId,
+      node: {
+        terraform: {
+          resource: 'aws_ecs_service',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys: new Set<string>(),
+      vpcKeys: new Set<string>(),
+      explicitVpcId: undefined,
+      controls: unresolvedControls,
+      plannedSubnetKeysByNodeId: new Map(),
+    });
+    expect(unresolvedControls.suppressPlacement).toBe(true);
+  });
+
+  it('shoud reconcile task-definition placement from planned runtime subnets within the explicit vpc', () => {
+    const taskDefinitionId = asNodeId('resource.aws_ecs_task_definition.plan');
+    const otherTaskDefinitionId = asNodeId('resource.aws_ecs_task_definition.other');
+    const serviceId = asNodeId('resource.aws_ecs_service.plan');
+    const mismatchServiceId = asNodeId('resource.aws_ecs_service.other');
+    const irrelevantNodeId = asNodeId('resource.aws_security_group.irrelevant');
+    const graph = {
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId === serviceId) {
+          return {
+            terraform: {
+              resource: 'aws_ecs_service',
+              state: {
+                effective: {
+                  values: {
+                    task_definition: 'plan:1',
+                  },
+                },
+              },
+            },
+          } as TgNodeAttributes;
+        }
+
+        if (nodeId === mismatchServiceId) {
+          return {
+            terraform: {
+              resource: 'aws_ecs_service',
+              state: {
+                effective: {
+                  values: {
+                    task_definition: 'other:1',
+                  },
+                },
+              },
+            },
+          } as TgNodeAttributes;
+        }
+
+        if (nodeId === taskDefinitionId) {
+          return {
+            terraform: {
+              resource: 'aws_ecs_task_definition',
+            },
+          } as TgNodeAttributes;
+        }
+
+        if (nodeId === otherTaskDefinitionId) {
+          return {
+            terraform: {
+              resource: 'aws_ecs_task_definition',
+            },
+          } as TgNodeAttributes;
+        }
+
+        if (nodeId === irrelevantNodeId) {
+          return {
+            terraform: {
+              resource: 'aws_security_group',
+            },
+          } as TgNodeAttributes;
+        }
+
+        return undefined;
+      },
+      predecessors: (nodeId: string) =>
+        nodeId === taskDefinitionId ? [serviceId, mismatchServiceId, irrelevantNodeId] : [],
+      successors: (nodeId: string) => (nodeId === mismatchServiceId ? [otherTaskDefinitionId] : []),
+    } as unknown as AdapterOperations;
+
+    const context = buildContext(graph);
+    context.subnets.set('subnet-a', { key: 'subnet-a', label: 'a', vpcKey: 'vpc-a' });
+    context.subnets.set('subnet-b', { key: 'subnet-b', label: 'b', vpcKey: 'vpc-b' });
+    context.groupNameToNodeId.set(
+      'ecs.task_definition',
+      new Map([
+        ['plan:1', taskDefinitionId],
+        ['other:1', otherTaskDefinitionId],
+      ]),
+    );
+
+    const subnetKeys = new Set<string>();
+
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: taskDefinitionId,
+      node: {
+        terraform: {
+          resource: 'aws_ecs_task_definition',
+        },
+      } as TgNodeAttributes,
+      values: {},
+      context,
+      subnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: 'vpc-a',
+      controls: {},
+      plannedSubnetKeysByNodeId: new Map([[serviceId, ['subnet-a', 'subnet-b']]]),
+    });
+
+    expect(subnetKeys).toStrictEqual(new Set<string>(['subnet-a', 'subnet-b']));
+  });
+
+  it('shoud filter planned runtime subnets by explicit vpc during reconcile', () => {
+    const serviceId = asNodeId('resource.aws_ecs_service.filter');
+    const securityGroupId = asNodeId('resource.aws_security_group.filter');
+    const graph = {
+      getNodeAttributes: (nodeId: string) => {
+        if (nodeId === securityGroupId) {
+          return {
+            terraform: {
+              resource: 'aws_security_group',
+            },
+          } as TgNodeAttributes;
+        }
+
+        return undefined;
+      },
+      predecessors: (nodeId: string) => (nodeId === serviceId ? [securityGroupId] : []),
+      successors: () => [],
+    } as unknown as AdapterOperations;
+
+    const context = buildContext(graph);
+    context.subnets.set('subnet-a', { key: 'subnet-a', label: 'a', vpcKey: 'vpc-a' });
+    context.subnets.set('subnet-b', { key: 'subnet-b', label: 'b', vpcKey: 'vpc-b' });
+    context.groupNameToNodeId.set(
+      'ecs.task_definition',
+      new Map([['filter:1', asNodeId('resource.aws_ecs_task_definition.filter')]]),
+    );
+
+    const subnetKeys = new Set<string>();
+
+    EcsPlacementEnricher.reconcilePlacement?.({
+      nodeId: serviceId,
+      node: {
+        terraform: {
+          resource: 'aws_ecs_service',
+        },
+      } as TgNodeAttributes,
+      values: {
+        task_definition: 'filter:1',
+      },
+      context,
+      subnetKeys,
+      vpcKeys: new Set<string>(),
+      explicitVpcId: 'vpc-a',
+      controls: {},
+      plannedSubnetKeysByNodeId: new Map([[securityGroupId, ['subnet-a', 'subnet-b']]]),
+    });
+
+    expect(subnetKeys).toStrictEqual(new Set<string>(['subnet-a']));
+  });
 });

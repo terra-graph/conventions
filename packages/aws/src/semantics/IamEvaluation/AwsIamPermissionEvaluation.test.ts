@@ -7,9 +7,11 @@ import {
 } from '@terra-graph/core';
 import { DirectedGraph } from 'graphology';
 import {
+  AWS_IAM_PERMISSION_CAPABILITIES,
   __testing,
   evaluateAwsIamPermissions,
   normalizeAwsIamPermissionDecoratorConfig,
+  resolveCapabilityFactEndpoints,
   shouldEvaluateSubject,
   subjectProjectionNamesFor,
 } from './AwsIamPermissionEvaluation.js';
@@ -37,6 +39,7 @@ const createMockGraph = (
 
 describe('AwsIamPermissionEvaluation helpers', () => {
   it('should normalize config and subject filters', () => {
+    expect(AWS_IAM_PERMISSION_CAPABILITIES()).toContain('sqs_read');
     expect(normalizeAwsIamPermissionDecoratorConfig(undefined)).toStrictEqual({});
     expect(
       normalizeAwsIamPermissionDecoratorConfig({
@@ -141,11 +144,182 @@ describe('AwsIamPermissionEvaluation helpers', () => {
       ),
     ).toBe('custom');
     expect(
+      __testing.resourceNamePatternFromArnPattern(
+        'aws_sfn_state_machine',
+        'arn:aws:states:eu-west-2:123456789012:stateMachine:event-flow',
+      ),
+    ).toBe('event-flow');
+    expect(
       __testing.resourceNamePatternFromArnPattern('aws_s3_bucket', 'arn:aws:s3:::bucket-name/path'),
     ).toBe('bucket-name');
     expect(
       __testing.resourceNamePatternFromArnPattern('aws_lambda_function', 'arn:aws:lambda'),
     ).toBeUndefined();
+    expect(
+      __testing.resourceNamePatternFromArnPattern('aws_s3_bucket', 'not-an-arn'),
+    ).toBeUndefined();
+    expect(
+      __testing.resolveTargetNames({
+        terraform: {
+          resource: 'aws_lambda_function',
+          state: {
+            effective: {
+              values: {
+                name: 'worker',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['worker']);
+    expect(
+      __testing.resolveTargetNames({
+        terraform: {
+          state: {
+            effective: {
+              values: {
+                name: 'fallback',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['fallback']);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          resource: 'aws_lambda_function',
+          state: {
+            effective: {
+              values: {
+                arn: 'arn:aws:lambda:eu-west-2:123456789012:function:worker',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['arn:aws:lambda:eu-west-2:123456789012:function:worker']);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          state: {
+            effective: {
+              values: {
+                arn: 'arn:aws:lambda:eu-west-2:123456789012:function:fallback',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['arn:aws:lambda:eu-west-2:123456789012:function:fallback']);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          resource: 'aws_s3_bucket',
+          state: {
+            effective: {
+              values: {
+                bucket: 'artifacts',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['arn:aws:s3:::artifacts', 'arn:aws:s3:::artifacts/*']);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          resource: 'aws_s3_bucket',
+          state: {
+            effective: {
+              values: null,
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual([]);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          resource: 'aws_s3_bucket',
+          state: {
+            effective: {
+              values: {},
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual([]);
+    expect(
+      __testing.resolveTargetNames({
+        terraform: {
+          resource: 'aws_sqs_queue',
+          state: {
+            effective: {
+              values: {
+                name: 'jobs',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['jobs']);
+    expect(
+      __testing.resolveSupportedTargetArns({
+        terraform: {
+          resource: 'aws_sqs_queue',
+          state: {
+            effective: {
+              values: {
+                arn: 'arn:aws:sqs:eu-west-2:123456789012:jobs',
+              },
+            },
+            instances: [],
+          },
+        },
+      } as never),
+    ).toStrictEqual(['arn:aws:sqs:eu-west-2:123456789012:jobs']);
+
+    expect(
+      resolveCapabilityFactEndpoints({
+        subjectNodeId: asNodeId('lambda'),
+        targetNodeId: asNodeId('bucket'),
+        capability: {
+          factKind: 'reads_from',
+          direction: 'target_to_subject',
+        },
+      }),
+    ).toStrictEqual({
+      kind: 'reads_from',
+      from: asNodeId('bucket'),
+      to: asNodeId('lambda'),
+      subjectNodeId: asNodeId('lambda'),
+      targetNodeId: asNodeId('bucket'),
+    });
+    expect(
+      resolveCapabilityFactEndpoints({
+        subjectNodeId: asNodeId('lambda'),
+        targetNodeId: asNodeId('table'),
+        capability: {
+          factKind: 'writes_to',
+          direction: 'subject_to_target',
+        },
+      }),
+    ).toStrictEqual({
+      kind: 'writes_to',
+      from: asNodeId('lambda'),
+      to: asNodeId('table'),
+      subjectNodeId: asNodeId('lambda'),
+      targetNodeId: asNodeId('table'),
+    });
   });
 
   it('should resolve policy documents, statements, reachable policies, and matched targets', () => {
@@ -370,6 +544,7 @@ describe('AwsIamPermissionEvaluation helpers', () => {
       {
         capability: 'eventbridge_put',
         factKind: 'publishes_to',
+        direction: 'subject_to_target',
         supportedTargetResourceTypes: ['aws_cloudwatch_event_bus'],
         actionSamples: ['events:PutEvents'],
         shouldSkipResolveMatchedTargets: () => false,
@@ -405,6 +580,7 @@ describe('AwsIamPermissionEvaluation helpers', () => {
         {
           capability: 'sqs_send',
           factKind: 'publishes_to',
+          direction: 'subject_to_target',
           supportedTargetResourceTypes: ['aws_sqs_queue'],
           actionSamples: ['sqs:SendMessage'],
           shouldSkipResolveMatchedTargets: () => false,
@@ -434,6 +610,7 @@ describe('AwsIamPermissionEvaluation helpers', () => {
         {
           capability: 'sqs_send',
           factKind: 'publishes_to',
+          direction: 'subject_to_target',
           supportedTargetResourceTypes: ['aws_sqs_queue'],
           actionSamples: ['sqs:SendMessage'],
           shouldSkipResolveMatchedTargets: () => false,
@@ -447,6 +624,114 @@ describe('AwsIamPermissionEvaluation helpers', () => {
       matchedResourcePatterns: [],
       unresolvedResourcePatterns: [],
     });
+
+    const supportedTargets = __testing.collectSupportedTargets(
+      createMockGraph(
+        {
+          queue: {
+            terraform: {
+              resource: 'aws_sqs_queue',
+              address: 'aws_sqs_queue.queue',
+              state: {
+                effective: {
+                  values: {
+                    arn: 'arn:aws:sqs:eu-west-2:123456789012:queue',
+                    name: 'queue',
+                  },
+                },
+                instances: [],
+              },
+              configuration: {
+                expressions: {
+                  redrive_policy: {},
+                },
+              },
+            },
+          },
+        },
+        [],
+      ),
+    );
+    expect(supportedTargets).toMatchObject([
+      {
+        nodeId: asNodeId('queue'),
+        resourceType: 'aws_sqs_queue',
+        arns: ['arn:aws:sqs:eu-west-2:123456789012:queue'],
+        names: ['queue'],
+      },
+    ]);
+
+    const deadLetterTargets = __testing.collectSupportedTargets(
+      createMockGraph(
+        {
+          source: {
+            terraform: {
+              resource: 'aws_sqs_queue',
+              address: 'aws_sqs_queue.source',
+              state: {
+                effective: {
+                  values: {
+                    arn: 'arn:aws:sqs:eu-west-2:123456789012:source',
+                    name: 'source',
+                    redrive_policy: {
+                      deadLetterTargetArn: 'arn:aws:sqs:eu-west-2:123456789012:dlq',
+                    },
+                  },
+                },
+                instances: [],
+              },
+            },
+          },
+          dlq: {
+            terraform: {
+              resource: 'aws_sqs_queue',
+              address: 'aws_sqs_queue.dlq',
+              state: {
+                effective: {
+                  values: {
+                    name: 'dlq',
+                    redrive_allow_policy: {
+                      sourceQueueArns: ['arn:aws:sqs:eu-west-2:123456789012:source'],
+                    },
+                  },
+                },
+                instances: [],
+              },
+            },
+          },
+        },
+        [],
+      ),
+    );
+    expect(
+      deadLetterTargets.find((target) => target.nodeId === asNodeId('dlq'))?.isDeadLetterQueue,
+    ).toBe(true);
+    expect(
+      __testing.collectSupportedTargets(
+        createMockGraph(
+          {
+            source: {
+              terraform: {
+                resource: 'aws_sqs_queue',
+                address: 'aws_sqs_queue.source_invalid',
+                state: {
+                  effective: {
+                    values: {
+                      name: 'source-invalid',
+                      redrive_policy: {
+                        deadLetterTargetArn: 'not-an-arn',
+                      },
+                    },
+                  },
+                  instances: [],
+                },
+              },
+            },
+          },
+          [],
+        ),
+      )[0]?.isDeadLetterQueue,
+    ).toBeUndefined();
   });
 
   it('should evaluate permissions and ignore unmatched capabilities', () => {

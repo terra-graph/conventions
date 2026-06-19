@@ -282,4 +282,73 @@ describe('ProjectionPlugin', () => {
       },
     });
   });
+
+  it('should include semantic decorator and relationship phases with explicit query options', () => {
+    const registry = new GraphPluginRegistry({
+      [ProjectionPlugin.id]: new ProjectionPlugin(),
+    });
+    const decorator = {
+      name: 'test.semantic.decorator',
+      extract: ({ graph }: { graph: unknown }) => graph,
+      project: ({ graph }: { graph: unknown }) => graph,
+    };
+    const profile = new Profile('projection-decorators', {
+      plugins: [
+        {
+          plugin: ProjectionPlugin.id,
+          options: {
+            projections: [],
+            semanticDecorators: [decorator],
+            semanticRelationships: [
+              {
+                from: {
+                  attr: {
+                    key: 'projection.derivation.projectionName',
+                    eq: 'aws.lambda',
+                  },
+                },
+                fact: 'reads_from',
+                relation: 'consumes',
+                overwrite: false,
+                enforceDirection: false,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const phases = profile.resolvePhases(undefined, undefined, registry);
+
+    expect(phases).toHaveLength(5);
+    expect(phases[2][0]?.serialize()).toEqual({
+      id: 'ApplySemanticDecorators',
+      config: {
+        node: { any: true },
+        options: {
+          mode: 'project',
+          decorators: [decorator],
+        },
+      },
+    });
+    expect(phases[3][0]?.serialize()).toEqual({
+      id: 'ProjectionSemanticFactRelationship',
+      config: {
+        edge: {
+          from: {
+            attr: {
+              key: 'projection.derivation.projectionName',
+              eq: 'aws.lambda',
+            },
+          },
+        },
+        options: {
+          fact: 'reads_from',
+          relation: 'consumes',
+          overwrite: false,
+          enforceDirection: false,
+        },
+      },
+    });
+  });
 });

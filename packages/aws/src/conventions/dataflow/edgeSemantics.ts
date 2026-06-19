@@ -2,6 +2,14 @@ import { DefaultEdgeSemanticRoles, DefaultEdgeSemantics } from '@terra-graph/cor
 
 export const AwsEdgeSemantics = {
   ...DefaultEdgeSemantics,
+  Reads: {
+    semantic: 'reads',
+    role: DefaultEdgeSemanticRoles.Primary,
+  },
+  Writes: {
+    semantic: 'writes',
+    role: DefaultEdgeSemanticRoles.Primary,
+  },
   DeadLettersTo: {
     semantic: 'dead_letters_to',
     role: DefaultEdgeSemanticRoles.Primary,

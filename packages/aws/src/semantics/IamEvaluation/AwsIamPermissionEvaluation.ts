@@ -77,6 +77,7 @@ export type AwsIamPermissionTargetMatch = {
 export type AwsIamPermissionMatchedCapability = {
   capability: string;
   factKind: string;
+  direction: CapabilityDefinition['direction'];
   roleNodeIds: NodeId[];
   policyNodeIds: NodeId[];
   targetNodeIds: NodeId[];
@@ -91,6 +92,14 @@ export type AwsIamPermissionEvaluationResult = {
   policyNodeIds: NodeId[];
   capabilities: AwsIamPermissionMatchedCapability[];
   skippedPolicies: string[];
+};
+
+export type AwsIamPermissionResolvedFactEndpoints = {
+  kind: string;
+  from: NodeId;
+  to: NodeId;
+  subjectNodeId: NodeId;
+  targetNodeId: NodeId;
 };
 
 const uniqueTargetMatches = (
@@ -561,6 +570,22 @@ const statementMatchesCapability = (
     capability.actionSamples.some((sample) => matchesWildcardPattern(actionPattern, sample, 'i')),
   );
 
+export const resolveCapabilityFactEndpoints = ({
+  subjectNodeId,
+  targetNodeId,
+  capability,
+}: {
+  subjectNodeId: NodeId;
+  targetNodeId: NodeId;
+  capability: Pick<CapabilityDefinition, 'factKind' | 'direction'>;
+}): AwsIamPermissionResolvedFactEndpoints => ({
+  kind: capability.factKind,
+  from: capability.direction === 'target_to_subject' ? targetNodeId : subjectNodeId,
+  to: capability.direction === 'target_to_subject' ? subjectNodeId : targetNodeId,
+  subjectNodeId,
+  targetNodeId,
+});
+
 /* istanbul ignore next -- resource-pattern ranking is exercised via higher-level permission semantics tests */
 const resolveMatchedTargets = (
   graph: Parameters<SemanticDecorator['extract']>[0]['graph'],
@@ -812,6 +837,7 @@ export const evaluateAwsIamPermissions = ({
             ({
               capability: capability.capability,
               factKind: capability.factKind,
+              direction: capability.direction,
               roleNodeIds: [],
               policyNodeIds: [],
               targetNodeIds: [],
@@ -874,5 +900,6 @@ export const __testing = {
   resolveStatements,
   collectConnectedRoleNodeIds,
   statementMatchesCapability,
+  resolveCapabilityFactEndpoints,
   resolveMatchedTargets,
 };

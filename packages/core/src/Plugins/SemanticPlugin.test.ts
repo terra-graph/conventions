@@ -29,7 +29,22 @@ describe('SemanticPlugin', () => {
       id: 'ApplySemanticDecorators',
       config: {
         node: { any: true },
+        options: {
+          mode: 'extract',
+          decorators: [decorator],
+        },
       },
     });
+  });
+
+  it('should not contribute phases when decorators are omitted', () => {
+    const registry = new GraphPluginRegistry({
+      [SemanticPlugin.id]: new SemanticPlugin(),
+    });
+    const profile = new Profile('semantic-empty', {
+      plugins: [{ plugin: SemanticPlugin.id }],
+    });
+
+    expect(profile.resolvePhases(undefined, undefined, registry)).toStrictEqual([]);
   });
 });

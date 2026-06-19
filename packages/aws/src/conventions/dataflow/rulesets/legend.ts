@@ -18,6 +18,14 @@ export const legendSemanticsRuleSet = new RuleSet({
             title: 'Accesses data',
             colour: '#198754',
           },
+          [AwsEdgeSemantics.Reads.semantic]: {
+            title: 'Reads data',
+            colour: '#198754',
+          },
+          [AwsEdgeSemantics.Writes.semantic]: {
+            title: 'Writes data',
+            colour: '#20a39e',
+          },
           [AwsEdgeSemantics.Publishes.semantic]: {
             title: 'Publishes event',
             colour: '#fd7e14',

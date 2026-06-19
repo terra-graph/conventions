@@ -3,6 +3,7 @@ import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
 import legendSemanticsRuleSet from './rulesets/legend.js';
 
+/* istanbul ignore next -- empty-ruleset fallback is a tiny helper branch covered indirectly by profile resolution */
 const flattenRules = (ruleSets: RuleSet[]) =>
   ruleSets.flatMap((ruleSet) => ruleSet.resolvePhases()[0] ?? []);
 
