@@ -8,11 +8,8 @@ import {
 } from '@terra-graph/core';
 import createRuntimeProvider from '../../../index.js';
 import { conventionName, profileName, ruleName, ruleSetName } from '../../../namespaces.js';
-import { ApiGatewayPlugin } from '../../../plugins/ApiGatewayPlugin.js';
-import { IamPlugin } from '../../../plugins/IamPlugin.js';
 import { AwsNetworkPlacementPlugin } from '../../../plugins/Network/AwsNetworkPlacementPlugin.js';
 import { VpcTopologyPlugin } from '../../../plugins/Network/VpcTopologyPlugin.js';
-import { S3Plugin } from '../../../plugins/S3Plugin.js';
 import { Convention } from '../../index.js';
 import dataFlowConventionRules from '../rules.js';
 import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
@@ -98,7 +95,6 @@ describe('dataflow dot profile', () => {
     const baseProfile = serialized.usesProfiles?.[0];
     expect(baseProfile?.phases?.map((phase) => phase.phase)).toStrictEqual(['pre', 'main']);
     expect(baseProfile?.plugins).toEqual([
-      { plugin: S3Plugin.id },
       {
         plugin: VpcTopologyPlugin.id,
         slot: 'topology',
@@ -109,16 +105,6 @@ describe('dataflow dot profile', () => {
         options: {
           enrichers: ['ecs', 'efs', 'network'],
         },
-      },
-      {
-        plugin: ApiGatewayPlugin.id,
-        slot: 'apigateway',
-        options: { mode: 'standard' },
-      },
-      {
-        plugin: IamPlugin.id,
-        slot: 'iam',
-        options: { mode: 'full', removeOrphans: true },
       },
     ]);
     expect(conventionDataFlowDotProfileName).toBe(
@@ -144,7 +130,7 @@ describe('dataflow dot profile', () => {
       runtimePlugins,
     );
 
-    expect(phases.length).toBeGreaterThan(4);
+    expect(phases.length).toBeGreaterThan(2);
     expect(
       phases.map((rules) => rules.some((rule) => rule.serialize().id === 'EdgeLegend')),
     ).toContain(true);

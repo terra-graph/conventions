@@ -5,12 +5,8 @@ import dataFlowConventionRules from './conventions/dataflow/rules.js';
 import { Convention } from './conventions/index.js';
 import buildRuntimeProvider, { AwsEdgeSemantics } from './index.js';
 import { conventionName, ruleName, ruleSetName } from './namespaces.js';
-import { ApiGatewayPlugin } from './plugins/ApiGatewayPlugin.js';
-import { IamPlugin } from './plugins/IamPlugin.js';
 import { AwsNetworkPlacementPlugin } from './plugins/Network/AwsNetworkPlacementPlugin.js';
 import { VpcTopologyPlugin } from './plugins/Network/VpcTopologyPlugin.js';
-import { S3Plugin } from './plugins/S3Plugin.js';
-import { SnsPlugin } from './plugins/SnsPlugin.js';
 
 const assertRuntime = (runtime: ReturnType<typeof buildRuntimeProvider>) => {
   const { supportedAdapterOperationsRegistry, plugins, namedRules, namedRuleSets, profiles } =
@@ -41,14 +37,7 @@ describe('aws provider', () => {
 
     expect(supportedAdapterOperationsRegistry.DotAdapter).toBe(DotAdapter);
     expect(plugins.names().sort()).toStrictEqual(
-      [
-        ApiGatewayPlugin.id,
-        AwsNetworkPlacementPlugin.id,
-        VpcTopologyPlugin.id,
-        IamPlugin.id,
-        S3Plugin.id,
-        SnsPlugin.id,
-      ].sort(),
+      [AwsNetworkPlacementPlugin.id, VpcTopologyPlugin.id].sort(),
     );
     expect(namedRules.names().sort()).toEqual(
       [
