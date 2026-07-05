@@ -29,7 +29,7 @@ describe('LayoutFlowOrder.constructor', () => {
         new LayoutFlowOrder({
           node: { nodeId: { eq: 'node-a' } },
           options: 'invalid',
-        }),
+        } as never),
     ).toThrow(`Rule 'LayoutFlowOrder' requires options to be an object`);
 
     expect(

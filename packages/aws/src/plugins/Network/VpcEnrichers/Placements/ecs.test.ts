@@ -865,8 +865,18 @@ describe('EcsPlacementEnricher', () => {
     } as unknown as AdapterOperations;
 
     const context = buildContext(graph);
-    context.subnets.set('subnet-a', { key: 'subnet-a', label: 'a', vpcKey: 'vpc-a' });
-    context.subnets.set('subnet-b', { key: 'subnet-b', label: 'b', vpcKey: 'vpc-b' });
+    context.subnets.set('subnet-a', {
+      key: 'subnet-a',
+      label: 'a',
+      vpcReferences: new Set<string>(),
+      vpcKey: 'vpc-a',
+    });
+    context.subnets.set('subnet-b', {
+      key: 'subnet-b',
+      label: 'b',
+      vpcReferences: new Set<string>(),
+      vpcKey: 'vpc-b',
+    });
     context.groupNameToNodeId.set(
       'ecs.task_definition',
       new Map([
@@ -916,8 +926,18 @@ describe('EcsPlacementEnricher', () => {
     } as unknown as AdapterOperations;
 
     const context = buildContext(graph);
-    context.subnets.set('subnet-a', { key: 'subnet-a', label: 'a', vpcKey: 'vpc-a' });
-    context.subnets.set('subnet-b', { key: 'subnet-b', label: 'b', vpcKey: 'vpc-b' });
+    context.subnets.set('subnet-a', {
+      key: 'subnet-a',
+      label: 'a',
+      vpcReferences: new Set<string>(),
+      vpcKey: 'vpc-a',
+    });
+    context.subnets.set('subnet-b', {
+      key: 'subnet-b',
+      label: 'b',
+      vpcReferences: new Set<string>(),
+      vpcKey: 'vpc-b',
+    });
     context.groupNameToNodeId.set(
       'ecs.task_definition',
       new Map([['filter:1', asNodeId('resource.aws_ecs_task_definition.filter')]]),

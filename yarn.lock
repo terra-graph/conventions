@@ -1132,7 +1132,7 @@
     "@sinonjs/commons" "^3.0.0"
 
 "@terra-graph/core@file:../core", "@terra-graph/core@file:../terra-graph/core":
-  version "1.0.0-rc.29"
+  version "1.0.0-rc.30"
   dependencies:
     graphlib-dot "^0.6.4"
     graphology "^0.26.0"
