@@ -1,5 +1,7 @@
 import { GraphPluginRegistry, Profile } from '@terra-graph/core';
+import { ProjectionPipelineBuilder } from './ProjectionPipelineBuilder.js';
 import { ProjectionPlugin } from './ProjectionPlugin.js';
+import type { ProjectionPluginOptions } from './ProjectionPluginOptions.js';
 
 describe('ProjectionPlugin', () => {
   it('should contribute projection-phase rules through profile plugin resolution', () => {
@@ -349,6 +351,52 @@ describe('ProjectionPlugin', () => {
           enforceDirection: false,
         },
       },
+    });
+  });
+
+  it('should wrap dynamic derivation rule options with singleton projection derivation', () => {
+    const baseOptions: ProjectionPluginOptions = {
+      instanceStrategy: 'match_by_key',
+      projections: [
+        {
+          name: 'aws.lambda',
+          rootNode: {
+            attr: {
+              key: 'terraform.resource',
+              eq: 'aws_lambda_function',
+            },
+          },
+        },
+      ],
+    };
+    let currentOptions = baseOptions;
+    const provider = {
+      getRuleOptions: () => currentOptions,
+    };
+    const builder = new ProjectionPipelineBuilder() as unknown as {
+      toDeriveRuleOptions(ruleOptions: typeof provider): typeof provider;
+    };
+
+    const deriveOptions = builder.toDeriveRuleOptions(provider);
+    currentOptions = {
+      ...baseOptions,
+      projections: [
+        ...baseOptions.projections,
+        {
+          name: 'aws.sqs',
+          rootNode: {
+            attr: {
+              key: 'terraform.resource',
+              eq: 'aws_sqs_queue',
+            },
+          },
+        },
+      ],
+    };
+
+    expect(deriveOptions.getRuleOptions()).toEqual({
+      ...currentOptions,
+      instanceStrategy: 'none',
     });
   });
 });
