@@ -485,11 +485,11 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     });
 
     const extracted = decorator.extract({ graph: buildAdapter(graph) });
-    requireDefined(findFactEdgeByFactEndpoints(extracted, tableId, lambdaId, 'reads_from'));
-    expect(findFactByEndpoints(extracted, tableId, lambdaId, 'reads_from')).toMatchObject({
+    requireDefined(findFactEdgeByFactEndpoints(extracted, lambdaId, tableId, 'reads_from'));
+    expect(findFactByEndpoints(extracted, lambdaId, tableId, 'reads_from')).toMatchObject({
       kind: 'reads_from',
-      from: tableId,
-      to: lambdaId,
+      from: lambdaId,
+      to: tableId,
       attributes: {
         capability: 'dynamodb_read',
         subjectNodeId: lambdaId,
@@ -512,8 +512,8 @@ describe('AwsIamPermissionSemanticDecorator', () => {
 
     const readEdgeIds = findProjectedFactEdgesToTarget(
       projected,
-      tableProjectionId,
       lambdaProjectionId,
+      tableProjectionId,
       'reads_from',
     );
     const writeEdgeIds = findProjectedFactEdgesToTarget(
@@ -526,11 +526,8 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     expect(readEdgeIds).toHaveLength(1);
     expect(writeEdgeIds).toHaveLength(1);
     expect(readEdgeIds[0]).not.toBe(writeEdgeIds[0]);
-    expect(findDirectedEdgesBetween(projected, tableProjectionId, lambdaProjectionId)).toEqual(
-      expect.arrayContaining([readEdgeIds[0]]),
-    );
     expect(findDirectedEdgesBetween(projected, lambdaProjectionId, tableProjectionId)).toEqual(
-      expect.arrayContaining([writeEdgeIds[0]]),
+      expect.arrayContaining([readEdgeIds[0], writeEdgeIds[0]]),
     );
   });
 
@@ -693,11 +690,11 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     });
 
     const extracted = decorator.extract({ graph: buildAdapter(graph) });
-    requireDefined(findFactEdgeByFactEndpoints(extracted, bucketId, lambdaId, 'reads_from'));
-    expect(findFactByEndpoints(extracted, bucketId, lambdaId, 'reads_from')).toMatchObject({
+    requireDefined(findFactEdgeByFactEndpoints(extracted, lambdaId, bucketId, 'reads_from'));
+    expect(findFactByEndpoints(extracted, lambdaId, bucketId, 'reads_from')).toMatchObject({
       kind: 'reads_from',
-      from: bucketId,
-      to: lambdaId,
+      from: lambdaId,
+      to: bucketId,
       attributes: {
         capability: 's3_read',
         subjectNodeId: lambdaId,
@@ -720,8 +717,8 @@ describe('AwsIamPermissionSemanticDecorator', () => {
 
     const readEdgeIds = findProjectedFactEdgesToTarget(
       projected,
-      bucketProjectionId,
       lambdaProjectionId,
+      bucketProjectionId,
       'reads_from',
     );
     const writeEdgeIds = findProjectedFactEdgesToTarget(
@@ -734,14 +731,14 @@ describe('AwsIamPermissionSemanticDecorator', () => {
     expect(readEdgeIds).toHaveLength(1);
     expect(writeEdgeIds).toHaveLength(1);
     expect(new Set([readEdgeIds[0], writeEdgeIds[0]]).size).toBe(2);
-    expect(writeEdgeIds).toEqual([existingProjectionEdgeId]);
-    expect(readEdgeIds).not.toContain(existingProjectionEdgeId);
+    expect(readEdgeIds).toEqual([existingProjectionEdgeId]);
+    expect(writeEdgeIds).not.toContain(existingProjectionEdgeId);
     expect(
       findDirectedEdgesBetween(projected, lambdaProjectionId, bucketProjectionId),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(
       findDirectedEdgesBetween(projected, bucketProjectionId, lambdaProjectionId),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   it('should derive reads_from facts from lambda role policies and create projection edges for readable queues', () => {

@@ -29,7 +29,7 @@ const Capabilities: Record<string, CapabilityDefinition> = {
   s3_read: {
     capability: 's3_read',
     factKind: 'reads_from',
-    direction: CapabilityFactDirections.TargetToSubject,
+    direction: CapabilityFactDirections.SubjectToTarget,
     supportedTargetResourceTypes: ['aws_s3_bucket'],
     actionSamples: ['s3:GetObject'],
     shouldSkipResolveMatchedTargets: () => false,
@@ -73,7 +73,7 @@ const Capabilities: Record<string, CapabilityDefinition> = {
   dynamodb_read: {
     capability: 'dynamodb_read',
     factKind: 'reads_from',
-    direction: CapabilityFactDirections.TargetToSubject,
+    direction: CapabilityFactDirections.SubjectToTarget,
     supportedTargetResourceTypes: ['aws_dynamodb_table'],
     actionSamples: ['dynamodb:GetItem'],
     shouldSkipResolveMatchedTargets: () => false,

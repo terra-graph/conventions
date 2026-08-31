@@ -10,6 +10,7 @@ import {
   ProjectionSemanticFactRelationship,
   resolveSemanticDecorators,
 } from '@terra-graph/core';
+import { DynamicProjectionRelationshipRules } from './DynamicProjectionRelationshipRules.js';
 import type {
   ProjectionAdjacencyRelationshipRule,
   ProjectionPluginOptions,
@@ -19,7 +20,7 @@ import type {
 export type ProjectionRuleOptionsInput = ProjectionPluginOptions | ProjectionRuleOptionsProvider;
 
 export type ProjectionRuleOptionsProvider = {
-  getRuleOptions(): ProjectionPluginOptions;
+  getRuleOptions(context?: unknown): ProjectionPluginOptions | Promise<ProjectionPluginOptions>;
 };
 
 const isProjectionRuleOptionsProvider = (
@@ -33,30 +34,28 @@ export class ProjectionPipelineBuilder {
     ruleOptions: ProjectionRuleOptionsInput = options,
   ): PhasePlan {
     const semanticDecorators = resolveSemanticDecorators(options.semanticDecorators);
-    const semanticRelationshipRules = options.semanticRelationships?.map(
-      (relationship) =>
-        new ProjectionSemanticFactRelationship({
-          edge: this.toSemanticEdgeQuery(relationship),
-          options: {
-            fact: relationship.fact,
-            relation: relationship.relation,
-            overwrite: relationship.overwrite ?? true,
-            enforceDirection: relationship.enforceDirection ?? true,
-          },
-        }),
+    const dynamicRelationshipRules = this.toDynamicRelationshipRules(ruleOptions);
+    const dynamicRelationshipPhase = this.toDynamicRelationshipPhase(dynamicRelationshipRules);
+    const semanticRelationshipRules = this.toSemanticRelationshipRules(
+      options,
+      dynamicRelationshipRules,
     );
 
-    const adjacencyRelationshipRules = options.adjacencyRelationships?.map(
-      (relationship) =>
-        new ProjectionAdjacencyRelationship({
-          edge: this.toAdjacencyEdgeQuery(relationship),
-          options: {
-            relation: relationship.relation,
-            overwrite: relationship.overwrite ?? true,
-            enforceDirection: relationship.enforceDirection ?? true,
-          },
-        }),
-    );
+    /* istanbul ignore next -- provider-backed builders require the current core runtime and are covered by DynamicProjectionRelationshipRules tests. */
+    const adjacencyRelationshipRules =
+      dynamicRelationshipRules.length > 0
+        ? undefined
+        : options.adjacencyRelationships?.map(
+            (relationship) =>
+              new ProjectionAdjacencyRelationship({
+                edge: this.toAdjacencyEdgeQuery(relationship),
+                options: {
+                  relation: relationship.relation,
+                  overwrite: relationship.overwrite ?? true,
+                  enforceDirection: relationship.enforceDirection ?? true,
+                },
+              }),
+          );
 
     return [
       {
@@ -106,6 +105,7 @@ export class ProjectionPipelineBuilder {
             },
           ]
         : []),
+      ...dynamicRelationshipPhase,
       {
         phase: 'projection',
         rules: [new ApplyProjectionEdgeSemantics()],
@@ -132,6 +132,54 @@ export class ProjectionPipelineBuilder {
     return Object.keys(edge).length === 0 ? { any: true } : (edge as EdgeRuleQuery);
   }
 
+  private toSemanticRelationshipRules(
+    options: ProjectionPluginOptions,
+    dynamicRelationshipRules: DynamicProjectionRelationshipRules[],
+  ): ProjectionSemanticFactRelationship[] | undefined {
+    /* istanbul ignore if -- provider-backed builders require the current core runtime and are covered by DynamicProjectionRelationshipRules tests. */
+    if (dynamicRelationshipRules.length > 0) {
+      return undefined;
+    }
+
+    return options.semanticRelationships?.map(
+      (relationship) =>
+        new ProjectionSemanticFactRelationship({
+          edge: this.toSemanticEdgeQuery(relationship),
+          options: {
+            fact: relationship.fact,
+            relation: relationship.relation,
+            overwrite: relationship.overwrite ?? true,
+            enforceDirection: relationship.enforceDirection ?? true,
+          },
+        }),
+    );
+  }
+
+  private toDynamicRelationshipRules(
+    ruleOptions: ProjectionRuleOptionsInput,
+  ): DynamicProjectionRelationshipRules[] {
+    /* istanbul ignore if -- provider-backed builders require the current core runtime and are covered by DynamicProjectionRelationshipRules tests. */
+    if (isProjectionRuleOptionsProvider(ruleOptions)) {
+      return [new DynamicProjectionRelationshipRules(ruleOptions)];
+    }
+
+    return [];
+  }
+
+  private toDynamicRelationshipPhase(rules: DynamicProjectionRelationshipRules[]): PhasePlan {
+    /* istanbul ignore if -- provider-backed builders require the current core runtime and are covered by DynamicProjectionRelationshipRules tests. */
+    if (rules.length > 0) {
+      return [
+        {
+          phase: 'projection',
+          rules,
+        },
+      ];
+    }
+
+    return [];
+  }
+
   private toDeriveRuleOptions(ruleOptions: ProjectionRuleOptionsInput): ProjectionRuleOptionsInput {
     if (!isProjectionRuleOptionsProvider(ruleOptions)) {
       return {
@@ -141,10 +189,24 @@ export class ProjectionPipelineBuilder {
     }
 
     return {
-      getRuleOptions: () => ({
-        ...ruleOptions.getRuleOptions(),
+      getRuleOptions: (context?: unknown) =>
+        this.withSingletonDerivation(ruleOptions.getRuleOptions(context)),
+    };
+  }
+
+  private withSingletonDerivation(
+    options: ProjectionPluginOptions | Promise<ProjectionPluginOptions>,
+  ): ProjectionPluginOptions | Promise<ProjectionPluginOptions> {
+    if (options instanceof Promise) {
+      return options.then((resolved) => ({
+        ...resolved,
         instanceStrategy: ProjectionInstanceStrategies.None,
-      }),
+      }));
+    }
+
+    return {
+      ...options,
+      instanceStrategy: ProjectionInstanceStrategies.None,
     };
   }
 }

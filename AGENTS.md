@@ -6,6 +6,13 @@ This file describes the agreed architecture, naming, and implementation conventi
 
 `terra-graph-conventions` is a monorepo. It defines packages that provide `RuntimeProviders` for `terra-graph` (v2 and above).
 
+## Packages
+
+This mono repo provides the following npm packages:
+
+- `@terra-graph/conventions-core`: Includes generic non cloud provider specific conventions and provides the plugins for definig projections and semantics.
+- `@terra-graph/conventions-aws`: AWS cloud specific plugins and conventions provided by rules and plugins
+
 ## Plugin Conventions
 
 1. Build contract:
@@ -19,27 +26,6 @@ This file describes the agreed architecture, naming, and implementation conventi
 3. Options:
 - Keep option shapes strict and serializable.
 - Apply defaults inside plugin options resolution, and validate enum/boolean inputs with explicit errors.
-
-## Testing Conventions
-
-1. Test files
-- Test files should live in the same directory as the file they contain tests for and have the same file name except with a `.test.ts` extension.
-
-2. Describe structure:
-- Each `describe` targets one public method:
-- Format: `describe('ClassName.methodName', () => { ... })`.
-
-3. Test naming:
-- `it('shoud ...')` pattern is used in current tests and should be kept consistent.
-
-4. Running tests
-- If the default Node version is too old, use `nvm` to select Node `20.19.6`.
-
-## Type Safety and Style
-
-- Prefer explicit types and generics over `any`.
-- Keep constructor and config shapes strict and predictable.
-- Favor small, composable objects that serialize cleanly.
 
 ## Code Style Guidance
 - Do not use imports from index.ts / index.js files
