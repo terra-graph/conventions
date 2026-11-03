@@ -7,6 +7,7 @@ export const coreBase = new Profile(profileName('base'), {
     {
       phase: 'pre',
       rules: [
+        { namedRule: 'core.remove.uninstantiated_resources' },
         { namedRule: 'core.remove.tfconfig' },
         { namedRule: 'core.remove.tfconfig_artifacts' },
         { namedRule: 'core.reconnect.time_sleep' },

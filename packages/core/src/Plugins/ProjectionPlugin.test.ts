@@ -712,7 +712,7 @@ describe('ProjectionPlugin', () => {
     );
   });
 
-  it('should preserve dynamic provider options through rule serialization', () => {
+  it('should preserve dynamic provider options through rule serialization', async () => {
     const lambda = tgProjectionNodeIdFrom('core', 'aws.lambda:handler');
     const database = tgProjectionNodeIdFrom('core', 'aws.db:database');
     const graph = new GraphologyAdapter().withTgGraph({
@@ -781,7 +781,7 @@ describe('ProjectionPlugin', () => {
     rule.match(lambda, node, graph);
 
     expect(
-      rule.apply(lambda, node, graph).getEdgeAttributes(asEdgeId('lambda-db')).projection
+      (await rule.apply(lambda, node, graph)).getEdgeAttributes(asEdgeId('lambda-db')).projection
         ?.relationship,
     ).toMatchObject({
       relation: 'reads',

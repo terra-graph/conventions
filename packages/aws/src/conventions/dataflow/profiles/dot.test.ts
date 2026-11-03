@@ -15,6 +15,9 @@ import dataFlowConventionRules from '../rules.js';
 import conventionDataFlowDotProfile, { conventionDataFlowDotProfileName } from './dot.js';
 
 const baseNamedRules = new NamedRuleRegistry({
+  'core.remove.uninstantiated_resources': new RemoveNode({
+    node: { nodeId: { eq: '__never__' } },
+  }),
   'core.remove.tfconfig': new RemoveNodeAndReconnectEdges({
     node: {
       attr: {

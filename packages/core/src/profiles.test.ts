@@ -23,6 +23,7 @@ describe('core profiles', () => {
     expect(serialized.name).toBe(profileName('base'));
     expect(serialized.phases?.map((phase) => phase.phase)).toStrictEqual(['pre', 'main']);
     expect(serialized.phases?.[0]?.rules).toEqual([
+      { namedRule: 'core.remove.uninstantiated_resources' },
       { namedRule: 'core.remove.tfconfig' },
       { namedRule: 'core.remove.tfconfig_artifacts' },
       { namedRule: 'core.reconnect.time_sleep' },

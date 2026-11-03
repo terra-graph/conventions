@@ -6,8 +6,12 @@ import {
 } from '@terra-graph/core';
 import { CollapseIndexedResourceTemplates } from './Rules/Node/CollapseIndexedResourceTemplates.js';
 import { MaterializeCardinalityResources } from './Rules/Node/MaterializeCardinalityResources.js';
+import { RemoveUninstantiatedResources } from './Rules/Node/RemoveUninstantiatedResources.js';
 
 export const coreNamedRules = new NamedRuleRegistry({
+  'core.remove.uninstantiated_resources': new RemoveUninstantiatedResources({
+    node: { any: true },
+  }),
   'core.remove.outputs': new RemoveNodeAndReconnectEdges({
     node: {
       attr: {
