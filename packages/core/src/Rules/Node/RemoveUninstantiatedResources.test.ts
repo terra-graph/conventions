@@ -9,25 +9,11 @@ import {
 } from '@terra-graph/core';
 import { RemoveUninstantiatedResources } from './RemoveUninstantiatedResources.js';
 
-const address = 'module.package.aws_lambda_function.this';
-const nodeId = tgNodeIdFrom('resource', address);
 const emptyState: TgNodeTerraformState = {
   source: 'plan_show',
   effective: null,
   instances: [],
 };
-
-const buildGraph = (state?: TgNodeTerraformState): TgGraph => ({
-  schemaVersion: '1.0.0',
-  description: {},
-  nodes: {
-    [nodeId]: {
-      id: nodeId,
-      terraform: { kind: 'resource', address, state },
-    },
-  },
-  edges: [],
-});
 
 const resolve = (graph: TgGraph): TgGraph =>
   new GraphResolver(new GraphologyAdapter())
@@ -37,7 +23,24 @@ const resolve = (graph: TgGraph): TgGraph =>
     })
     .toTgGraph();
 
-describe('RemoveUninstantiatedResources.apply', () => {
+describe.each(['resource', 'data'] as const)('RemoveUninstantiatedResources.apply', (kind) => {
+  const address =
+    kind === 'resource'
+      ? 'module.package.aws_lambda_function.this'
+      : 'module.metric_collector.data.aws_cloudwatch_log_group.lambda';
+  const nodeId = tgNodeIdFrom(kind, address);
+  const buildGraph = (state?: TgNodeTerraformState): TgGraph => ({
+    schemaVersion: '1.0.0',
+    description: {},
+    nodes: {
+      [nodeId]: {
+        id: nodeId,
+        terraform: { kind, address, state },
+      },
+    },
+    edges: [],
+  });
+
   it('shoud remove confirmed empty resources and their edges without reconnecting peers', () => {
     const graph = buildGraph(emptyState);
     const source = tgNodeIdFrom('resource', 'aws_s3_bucket.source');
@@ -64,9 +67,9 @@ describe('RemoveUninstantiatedResources.apply', () => {
     expect(resolve(buildGraph(state)).nodes[nodeId]).toBeDefined();
   });
 
-  it('shoud preserve non-resource nodes even with an empty plan state', () => {
+  it('shoud preserve configuration nodes even with an empty plan state', () => {
     const graph = buildGraph(emptyState);
-    graph.nodes[nodeId].terraform = { kind: 'data', address, state: emptyState };
+    graph.nodes[nodeId].terraform = { kind: 'local', address, state: emptyState };
 
     expect(resolve(graph).nodes[nodeId]).toBeDefined();
   });
@@ -112,7 +115,7 @@ describe('RemoveUninstantiatedResources.apply', () => {
 
   it('shoud remove confirmed empty nodes without addresses', () => {
     const graph = buildGraph(emptyState);
-    graph.nodes[nodeId].terraform = { kind: 'resource', state: emptyState };
+    graph.nodes[nodeId].terraform = { kind, state: emptyState };
     graph.changes = {
       source: 'terraform_plan',
       resources: {

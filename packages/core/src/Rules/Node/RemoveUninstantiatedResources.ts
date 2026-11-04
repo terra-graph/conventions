@@ -15,9 +15,11 @@ export class RemoveUninstantiatedResources extends NodeRule {
       return graph;
     }
 
-    const state = node.terraform?.state;
+    const terraform = node.terraform;
+    const state = terraform?.state;
     if (
-      node.terraform?.kind !== 'resource' ||
+      !terraform ||
+      (terraform.kind !== 'resource' && terraform.kind !== 'data') ||
       state?.source !== 'plan_show' ||
       state.effective !== null ||
       state.instances.length > 0
@@ -26,7 +28,7 @@ export class RemoveUninstantiatedResources extends NodeRule {
     }
 
     // A separate change plan can supply evidence after plan decoration.
-    const address = node.terraform.address;
+    const address = terraform.address;
     const changes = graph.toTgGraph().changes?.resources ?? {};
     const hasChange = Object.values(changes).some(
       (change) =>
