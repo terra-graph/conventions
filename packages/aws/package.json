@@ -46,6 +46,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@terra-graph/conventions-core": "^1.0.0-rc.10"
+    "@terra-graph/conventions-core": "^1.0.0"
   }
 }
