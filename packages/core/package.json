@@ -18,25 +18,28 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      },
       "default": "./dist/esm/index.js"
     }
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-commonjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "test": "jest --config jest.config.cjs --coverage",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "typecheck": "tsc -p tsconfig.verify.json --noEmit && tsc -p tsconfig-commonjs.json --noEmit"
   },
   "peerDependencies": {
-    "@terra-graph/core": "^1.0.0-rc.25"
+    "@terra-graph/core": "^1.0.0"
   },
   "devDependencies": {
-    "@terra-graph/core": "file:../../../terra-graph/core"
-  },
-  "resolutions": {
-    "@terra-graph/core": "file:../../../terra-graph/core"
+    "@terra-graph/core": "1.0.0"
   },
   "publishConfig": {
     "access": "public"

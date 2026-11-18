@@ -1,4 +1,4 @@
-module.exports = ({ packageDir, packageName, scope }) => ({
+module.exports = ({ packageName, scope }) => ({
   branches: [
     'main',
     {
@@ -24,19 +24,19 @@ module.exports = ({ packageDir, packageName, scope }) => ({
     [
       '@semantic-release/changelog',
       {
-        changelogFile: `${packageDir}/CHANGELOG.md`,
+        changelogFile: 'CHANGELOG.md',
       },
     ],
     [
       '@semantic-release/npm',
       {
-        pkgRoot: packageDir,
+        pkgRoot: '.',
       },
     ],
     [
       '@semantic-release/git',
       {
-        assets: [`${packageDir}/package.json`, `${packageDir}/CHANGELOG.md`],
+        assets: ['package.json', 'CHANGELOG.md'],
         message: `chore(${scope}): release \${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}`,
       },
     ],

@@ -29,7 +29,7 @@ This mono repo provides the following npm packages:
 
 ## Code Style Guidance
 - Do not use imports from index.ts / index.js files
-- Verify with `yarn lint:ci`. Use `yarn lint` for intended formatting fixes and inspect the diff.
+- Verify with `yarn lint:ci`. Use `yarn format` for intended formatting writes and inspect the diff.
 - Prefer OOP patterns and classes over functional
 - For architectural contracts (for example `RuntimeConfigSource`, `RuntimeConfigParser`, `RuntimeConfigValidator`):
   - Keep the interface and supporting types in a module with the same name (for example `src/Runtime/RuntimeConfigSource.ts`).
@@ -38,8 +38,12 @@ This mono repo provides the following npm packages:
 
 ## Setup and validation
 
-Use Node `20.19.6` from `.nvmrc` and Yarn `1.22.22`. The CI matrix additionally checks other Node versions; release tooling uses its workflow's runtime.
+Use Node `24.22.3` from `.nvmrc` and Yarn `1.22.22`. CI and release workflows use the tracked `.nvmrc` baseline.
 
-This checkout currently requires a sibling core checkout at `../core` because of the root package resolution. Build core there first. From this repository run `yarn install --frozen-lockfile`, `yarn lint:ci`, `yarn build`, and `yarn test`.
+Development dependencies use published core packages; a sibling checkout is not required. From this repository run `yarn install --frozen-lockfile`, `yarn lint:ci`, `yarn build`, and `yarn test`.
 
 Colocate new `.test.ts` files with their implementations. Describe public methods as `ClassName.methodName` and retain the existing `shoud` test naming convention. Keep interfaces and their supporting types together, use explicit types, and preserve strict serializable configuration shapes.
+
+## Verification entry point
+
+Use `yarn verify` for complete verification on Node `24.22.3`. It runs lint, no-emit type checking, a clean build, tests, and isolated packaged-consumer checks. `yarn lint` and `yarn lint:ci` never rewrite files; `yarn format` does. Verification must leave tracked files unchanged. Preserve existing lint coverage and do not weaken checks to make a release pass. See README.md for the staged registry dependency rollout where applicable.

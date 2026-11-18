@@ -5,19 +5,20 @@
   "license": "Apache-2.0",
   "packageManager": "yarn@1.22.22",
   "workspaces": ["packages/*"],
-  "resolutions": {
-    "@terra-graph/core": "file:../core"
-  },
   "engines": {
-    "node": ">=20"
+    "node": ">=24.10.0"
   },
   "scripts": {
     "build": "yarn workspaces run build",
     "test": "yarn workspaces run test",
-    "lint": "biome check --write .",
-    "lint:ci": "biome check .",
+    "lint": "biome check .",
+    "lint:ci": "yarn lint",
     "commitlint": "commitlint",
-    "release:package": "node ./scripts/release-package.cjs"
+    "release:package": "node ./scripts/release-package.cjs",
+    "format": "biome format --write .",
+    "typecheck": "yarn workspaces run typecheck",
+    "test:consumer": "node scripts/verify-consumer.mjs",
+    "verify": "yarn lint:ci && yarn typecheck && yarn build && yarn test && yarn test:consumer"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -27,16 +28,17 @@
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.0",
     "@semantic-release/git": "^10.0.1",
-    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/npm": "13.2.0",
     "@semantic-release/release-notes-generator": "^14.0.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.0",
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "jest": "^29.7.0",
-    "semantic-release": "^24.2.0",
+    "semantic-release": "25.0.9",
     "semantic-release-monorepo": "^8.0.0",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "npm": "11.21.2"
   }
 }
