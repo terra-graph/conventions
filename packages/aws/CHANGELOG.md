@@ -1,3 +1,23 @@
+## [@terra-graph/conventions-aws-v1.0.0-rc.8](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.7...@terra-graph/conventions-aws@1.0.0-rc.8) (2026-11-18)
+
+### Features
+
+* aws network cleanup ([9b00b79](https://github.com/terra-graph/conventions/commit/9b00b796e7932da7e0c2460e388a3cee4a2a25e9))
+* better projection handling ([35d96a8](https://github.com/terra-graph/conventions/commit/35d96a8166436908a78614a2b7b28658a0d52e7c))
+* fix issues deriving scheduler edges ([fc1a584](https://github.com/terra-graph/conventions/commit/fc1a584c039722c95f17929180bf98fa44af31dc))
+* initial iam based semantic decorator ([53e3baa](https://github.com/terra-graph/conventions/commit/53e3baa3b701f2d1c87c324349fd2e8df5a70c78))
+* initial network semantics ([ad90cb3](https://github.com/terra-graph/conventions/commit/ad90cb32c3e32da76744c881a4a17e907533ad82))
+* initial topology node removal ([fa020d0](https://github.com/terra-graph/conventions/commit/fa020d07b99a0b5a49ac59e0793cc158e06d55dc))
+* introduce fact based semantics derived from plan data ([4049550](https://github.com/terra-graph/conventions/commit/4049550ddbddf0279b3cbb2ff85c8ede47b2d02a))
+* projections ([670e903](https://github.com/terra-graph/conventions/commit/670e903de64acbe1fb2ffb89c170920410210f85))
+* starting to sort out profiles ([a044d11](https://github.com/terra-graph/conventions/commit/a044d11bee6d0887d84179900d03d9b4fd08637a))
+* stronger projection semantics ([40b0f67](https://github.com/terra-graph/conventions/commit/40b0f67db6efe134a0c8f6d9fb57e5aba653cd66))
+
+### Bug Fixes
+
+* proper rank alignment in groups ([ac68525](https://github.com/terra-graph/conventions/commit/ac68525136b43f0509edfc89ef2f81fb48b422c2))
+* same subnet cloned edges ([8c0bc7e](https://github.com/terra-graph/conventions/commit/8c0bc7e2ffc9756fe589e15a857ced128c689419))
+
 ## [1.0.0-rc.7](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.6...@terra-graph/conventions-aws@1.0.0-rc.7) (2026-04-26)
 
 ### Features
