@@ -1,3 +1,49 @@
+## @terra-graph/conventions-aws-v1.0.0 (2026-11-18)
+
+### Features
+
+* add ApiGatewayPlugin ([dd93334](https://github.com/terra-graph/conventions/commit/dd93334ae73a99323ea266df7e4b94577504455a))
+* add aws package ([2eaadc9](https://github.com/terra-graph/conventions/commit/2eaadc93f45ac1a9a1cd75f11b3652c9b838b37d))
+* add initial aws package ([8700de3](https://github.com/terra-graph/conventions/commit/8700de3984fcc75368864bbe615a38645c404d1b))
+* aws network cleanup ([9b00b79](https://github.com/terra-graph/conventions/commit/9b00b796e7932da7e0c2460e388a3cee4a2a25e9))
+* better projection handling ([35d96a8](https://github.com/terra-graph/conventions/commit/35d96a8166436908a78614a2b7b28658a0d52e7c))
+* ec2 vpc ([3f437d3](https://github.com/terra-graph/conventions/commit/3f437d3c0010dfc736a79812cf3f447db859aabd))
+* fix issues deriving scheduler edges ([fc1a584](https://github.com/terra-graph/conventions/commit/fc1a584c039722c95f17929180bf98fa44af31dc))
+* implement loopback edges fix ([33f0f22](https://github.com/terra-graph/conventions/commit/33f0f226b7cb6f618317fbc22f5c20dee457a8aa))
+* improved network management ([5be1c9e](https://github.com/terra-graph/conventions/commit/5be1c9e751400a21ad30ce0479842788612f31ff))
+* initial iam based semantic decorator ([53e3baa](https://github.com/terra-graph/conventions/commit/53e3baa3b701f2d1c87c324349fd2e8df5a70c78))
+* initial network semantics ([ad90cb3](https://github.com/terra-graph/conventions/commit/ad90cb32c3e32da76744c881a4a17e907533ad82))
+* initial network topology ([568d273](https://github.com/terra-graph/conventions/commit/568d2737c0dce1cc5ebaf8e9bbe21f6809af28ad))
+* initial topology node removal ([fa020d0](https://github.com/terra-graph/conventions/commit/fa020d07b99a0b5a49ac59e0793cc158e06d55dc))
+* introduce fact based semantics derived from plan data ([4049550](https://github.com/terra-graph/conventions/commit/4049550ddbddf0279b3cbb2ff85c8ede47b2d02a))
+* projections ([670e903](https://github.com/terra-graph/conventions/commit/670e903de64acbe1fb2ffb89c170920410210f85))
+* starting to sort out profiles ([a044d11](https://github.com/terra-graph/conventions/commit/a044d11bee6d0887d84179900d03d9b4fd08637a))
+* stronger projection semantics ([40b0f67](https://github.com/terra-graph/conventions/commit/40b0f67db6efe134a0c8f6d9fb57e5aba653cd66))
+
+### Bug Fixes
+
+* bump core dep ([b30c722](https://github.com/terra-graph/conventions/commit/b30c722f549280aa19a8e0ba914ea2d07e7ff80f))
+* compile errors ([19f7bc4](https://github.com/terra-graph/conventions/commit/19f7bc4101bb46b9e4b652110216a0e02988e1cb))
+* missing import ([08f82e0](https://github.com/terra-graph/conventions/commit/08f82e0b52cca80bb6fcf575de5ad35844cf5bf3))
+* move core rules to core conventions ([f204bca](https://github.com/terra-graph/conventions/commit/f204bca70e73fddf50c135bafbaa52e79494aae3))
+* proper rank alignment in groups ([ac68525](https://github.com/terra-graph/conventions/commit/ac68525136b43f0509edfc89ef2f81fb48b422c2))
+* release ([ca16ba5](https://github.com/terra-graph/conventions/commit/ca16ba5293f7bbc38c80f93052f90942ddedc56d))
+* release ([a85626d](https://github.com/terra-graph/conventions/commit/a85626d70979d59aed9e1d77f4372bd7751b3984))
+* release ([4d150c0](https://github.com/terra-graph/conventions/commit/4d150c0c8eecac008b3ebba875663bfe7ab1e164))
+* release ([af4d120](https://github.com/terra-graph/conventions/commit/af4d1204bbba1f950421d971bdddeb13f470f20c))
+* release ([80c26e0](https://github.com/terra-graph/conventions/commit/80c26e0c2bd43cd965c9a6537b6bf6fbb8be72cf))
+* release ([0e72f68](https://github.com/terra-graph/conventions/commit/0e72f687704df3a0edf1b4fb54b04e123030cd40))
+* release ([f996d7b](https://github.com/terra-graph/conventions/commit/f996d7b29190acfd575c2f01df6ac86f11f97871))
+* release ([ca0daff](https://github.com/terra-graph/conventions/commit/ca0daffdb70c7a5fe471114d5b7e03c4863fbc21))
+* release ([9c60c78](https://github.com/terra-graph/conventions/commit/9c60c780ae91fbde08f4d121871c73e4142dc910))
+* release ([7912dd5](https://github.com/terra-graph/conventions/commit/7912dd53c34009ad0008c4c4c4210730c78c32ae))
+* release ([24e33b6](https://github.com/terra-graph/conventions/commit/24e33b63d6c589fb7e36de9c127f3ece5889155f))
+* release ([54e836e](https://github.com/terra-graph/conventions/commit/54e836e6a8f5d8fd29fb3ed57bb5d0e83deb96f7))
+* same subnet cloned edges ([8c0bc7e](https://github.com/terra-graph/conventions/commit/8c0bc7e2ffc9756fe589e15a857ced128c689419))
+* tess ([397ff3f](https://github.com/terra-graph/conventions/commit/397ff3f7498af3e68d49026d84dd5e30949a8f96))
+* update tests ([53d386c](https://github.com/terra-graph/conventions/commit/53d386ce82d78d1ce75c7cf88f63e09ee5840c75))
+* use convention definitions from core ([33bf412](https://github.com/terra-graph/conventions/commit/33bf412efc526cf7aefba7c0261e1b0e37c5ec61))
+
 ## [@terra-graph/conventions-aws-v1.0.0-rc.8](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0-rc.7...@terra-graph/conventions-aws@1.0.0-rc.8) (2026-11-18)
 
 ### Features
