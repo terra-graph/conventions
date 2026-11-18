@@ -1,3 +1,9 @@
+## [@terra-graph/conventions-aws-v1.0.1](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-aws@1.0.0...@terra-graph/conventions-aws@1.0.1) (2026-11-18)
+
+### Bug Fixes
+
+* conventions-core dependency ([9b972cc](https://github.com/terra-graph/conventions/commit/9b972cce333f1024a9d40b7986538fa5b10777df))
+
 ## @terra-graph/conventions-aws-v1.0.0 (2026-11-18)
 
 ### Features
