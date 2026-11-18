@@ -46,7 +46,11 @@ const applyRuleAcrossNodes = (rule: BaseRule, adapter: AdapterOperations): Adapt
     }
 
     rule.match(nodeId, node, updated);
-    updated = rule.apply(nodeId, node, updated);
+    const result = rule.apply(nodeId, node, updated);
+    if (result instanceof Promise) {
+      throw new Error('Expected a synchronous rule');
+    }
+    updated = result;
   }
 
   return updated;

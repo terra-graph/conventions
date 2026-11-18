@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "baseUrl": ".",
+    "paths": {
+      "@terra-graph/conventions-core": ["../core/src/index.ts"]
+    }
+  },
+  "exclude": []
+}
