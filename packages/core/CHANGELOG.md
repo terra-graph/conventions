@@ -1,3 +1,42 @@
+## @terra-graph/conventions-core-v1.0.0 (2026-11-18)
+
+### Features
+
+* add new core dot profile ([b4b35f2](https://github.com/terra-graph/conventions/commit/b4b35f25394245195429199970a87d08a0b76bc9))
+* added core package ([1bdc6e7](https://github.com/terra-graph/conventions/commit/1bdc6e7aefc2813e5fb6650bd008a0bf31295719))
+* better node image and label layout ([da28ad9](https://github.com/terra-graph/conventions/commit/da28ad9325395a5fdb6947957858652f5f356f22))
+* better projection handling ([35d96a8](https://github.com/terra-graph/conventions/commit/35d96a8166436908a78614a2b7b28658a0d52e7c))
+* implement loopback edges fix ([33f0f22](https://github.com/terra-graph/conventions/commit/33f0f226b7cb6f618317fbc22f5c20dee457a8aa))
+* initial iam based semantic decorator ([53e3baa](https://github.com/terra-graph/conventions/commit/53e3baa3b701f2d1c87c324349fd2e8df5a70c78))
+* initial network topology ([568d273](https://github.com/terra-graph/conventions/commit/568d2737c0dce1cc5ebaf8e9bbe21f6809af28ad))
+* initial setup for alternative projection building methods ([7170709](https://github.com/terra-graph/conventions/commit/71707094b3c76d97fd470dc1961a4ae201d76aa9))
+* introduce fact based semantics derived from plan data ([4049550](https://github.com/terra-graph/conventions/commit/4049550ddbddf0279b3cbb2ff85c8ede47b2d02a))
+* projections ([670e903](https://github.com/terra-graph/conventions/commit/670e903de64acbe1fb2ffb89c170920410210f85))
+* starting to sort out profiles ([a044d11](https://github.com/terra-graph/conventions/commit/a044d11bee6d0887d84179900d03d9b4fd08637a))
+* stronger projection semantics ([40b0f67](https://github.com/terra-graph/conventions/commit/40b0f67db6efe134a0c8f6d9fb57e5aba653cd66))
+
+### Bug Fixes
+
+* bump core dep ([b30c722](https://github.com/terra-graph/conventions/commit/b30c722f549280aa19a8e0ba914ea2d07e7ff80f))
+* determine uninstantiated data resources in plan ([1ebd6dc](https://github.com/terra-graph/conventions/commit/1ebd6dca42b5f26fbdb0145d6095650e611b776a))
+* force release ([38320d9](https://github.com/terra-graph/conventions/commit/38320d95672062fba3dd62500f8653c67b09bb45))
+* force release ([f625ac0](https://github.com/terra-graph/conventions/commit/f625ac0a95083f25df1db7155c08d2d1544c4f2b))
+* force release ([f53250c](https://github.com/terra-graph/conventions/commit/f53250ca7b027d453a63731782d627d24cfc2de9))
+* force release ([fd1b399](https://github.com/terra-graph/conventions/commit/fd1b3998f3015b791981ef4a99b253855938ef92))
+* force release ([b3c459b](https://github.com/terra-graph/conventions/commit/b3c459b97b1f6c9028a7a173a6a8a0ad0e6b9f20))
+* force release ([1b05e2b](https://github.com/terra-graph/conventions/commit/1b05e2b9e03f76d7fe22a80a2e80f519ac320bc6))
+* html labels ([57f7d5c](https://github.com/terra-graph/conventions/commit/57f7d5ce925e284185f4012a11a20e5d19666cd9))
+* missing import ([ce4f91e](https://github.com/terra-graph/conventions/commit/ce4f91efaf60b702c5bdbd9f4adddde78a6276c1))
+* missing import ([08f82e0](https://github.com/terra-graph/conventions/commit/08f82e0b52cca80bb6fcf575de5ad35844cf5bf3))
+* move core rules to core conventions ([f204bca](https://github.com/terra-graph/conventions/commit/f204bca70e73fddf50c135bafbaa52e79494aae3))
+* release ([4d150c0](https://github.com/terra-graph/conventions/commit/4d150c0c8eecac008b3ebba875663bfe7ab1e164))
+* release ([80c26e0](https://github.com/terra-graph/conventions/commit/80c26e0c2bd43cd965c9a6537b6bf6fbb8be72cf))
+* release ([7912dd5](https://github.com/terra-graph/conventions/commit/7912dd53c34009ad0008c4c4c4210730c78c32ae))
+* release ([24e33b6](https://github.com/terra-graph/conventions/commit/24e33b63d6c589fb7e36de9c127f3ece5889155f))
+* release ([54e836e](https://github.com/terra-graph/conventions/commit/54e836e6a8f5d8fd29fb3ed57bb5d0e83deb96f7))
+* update tests ([53d386c](https://github.com/terra-graph/conventions/commit/53d386ce82d78d1ce75c7cf88f63e09ee5840c75))
+* use convention definitions from core ([33bf412](https://github.com/terra-graph/conventions/commit/33bf412efc526cf7aefba7c0261e1b0e37c5ec61))
+
 ## [1.0.0-rc.16](https://github.com/terra-graph/conventions/compare/@terra-graph/conventions-core@1.0.0-rc.15...@terra-graph/conventions-core@1.0.0-rc.16) (2026-04-28)
 
 ### Features
