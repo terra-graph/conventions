@@ -7,9 +7,7 @@ if (!input) {
   process.exit(1);
 }
 
-const workspace = input.startsWith('@')
-  ? input
-  : `@terra-graph/conventions-${input}`;
+const workspace = input.startsWith('@') ? input : `@terra-graph/conventions-${input}`;
 
 const result = spawnSync('yarn', ['workspace', workspace, 'semantic-release'], {
   stdio: 'inherit',

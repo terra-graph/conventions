@@ -1,4 +1,4 @@
-import { AlignNodes, NamedRuleRegistry } from 'terra-graph';
+import { AlignNodes, NamedRuleRegistry } from '@terra-graph/core';
 import { ruleName } from '../namespaces.js';
 
 export default new NamedRuleRegistry({

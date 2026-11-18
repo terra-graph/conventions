@@ -4,16 +4,35 @@ on:
   push:
     branches:
       - main
+      - rc/*
+      
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - run: yarn verify
+
   detect-packages:
     name: Detect changed packages
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
-      has_core: ${{ steps.detect.outputs.has_core }}
-      has_other: ${{ steps.detect.outputs.has_other }}
 
     steps:
       - name: Checkout
@@ -31,8 +50,13 @@ jobs:
             BASE_SHA=$(git rev-list --max-parents=0 HEAD)
           fi
 
-          CHANGED=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}" | awk -F/ '/^packages\/[^/]+\// { print $2 }' | sort -u)
-
+          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}")
+          if [ -z "$CHANGED_FILES" ] && git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$CHANGED_FILES"
+          CHANGED=$(printf '%s\n' "$CHANGED_FILES" | awk -F/ '/^packages\/[^/]+\// { print $2 }' | sort -u)
           if [ -z "$CHANGED" ]; then
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             echo 'has_changes=false' >> "$GITHUB_OUTPUT"
@@ -41,71 +65,29 @@ jobs:
             exit 0
           fi
 
-          if printf '%s\n' "$CHANGED" | grep -qx 'core'; then
-            echo 'has_core=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'has_core=false' >> "$GITHUB_OUTPUT"
-          fi
-
+          CORE=$(printf '%s\n' "$CHANGED" | grep -x 'core' || true)
           NON_CORE=$(printf '%s\n' "$CHANGED" | grep -vx 'core' || true)
-          if [ -z "$NON_CORE" ]; then
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            echo 'has_other=false' >> "$GITHUB_OUTPUT"
-          else
-            JSON=$(printf '%s\n' "$NON_CORE" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
-            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
-            echo 'has_other=true' >> "$GITHUB_OUTPUT"
-          fi
+          ORDERED=$(printf '%s\n' "$CORE" "$NON_CORE" | sed '/^$/d')
+          JSON=$(printf '%s\n' "$ORDERED" | jq -R . | jq -cs '{include: map({package: ., workspace: ("@terra-graph/conventions-" + .)})}')
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
 
           echo 'has_changes=true' >> "$GITHUB_OUTPUT"
 
-  release-core:
-    name: Release @terra-graph/conventions-core
-    runs-on: ubuntu-latest
-    needs: detect-packages
-    if: needs.detect-packages.outputs.has_core == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          registry-url: 'https://registry.npmjs.org'
-          cache: yarn
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Lint
-        run: yarn lint:ci
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
-
-      - name: Semantic release
-        run: yarn workspace "@terra-graph/conventions-core" semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-
-  release-others:
+  release-packages:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     name: Release ${{ matrix.workspace }}
     runs-on: ubuntu-latest
     needs:
       - detect-packages
-      - release-core
-    if: needs.detect-packages.outputs.has_other == 'true' && (needs.release-core.result == 'success' || needs.release-core.result == 'skipped')
+      - verify
+    if: needs.detect-packages.outputs.has_changes == 'true'
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix: ${{ fromJson(needs.detect-packages.outputs.matrix) }}
 
     steps:
@@ -114,28 +96,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Sync branch
+        run: |
+          git fetch origin "${GITHUB_REF_NAME}"
+          git reset --hard "origin/${GITHUB_REF_NAME}"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24.x
-          registry-url: 'https://registry.npmjs.org'
+          node-version-file: .nvmrc
           cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Lint
-        run: yarn lint:ci
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
+      - name: Verify synchronized revision
+        run: yarn verify
 
       - name: Semantic release
         run: yarn workspace "${{ matrix.workspace }}" semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+          NPM_CONFIG_PACKAGE_LOCK: false
           NPM_CONFIG_PROVENANCE: true

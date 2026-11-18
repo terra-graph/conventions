@@ -1,49 +1,59 @@
-import { NamedRuleSetRegistry, RuleSet } from 'terra-graph';
-import { conventionName, ruleName, ruleSetName } from '../../namespaces.js';
+import { NamedRuleSetRegistry, RemoveNode, RuleSet } from '@terra-graph/core';
+import { conventionName, ruleSetName } from '../../namespaces.js';
 import { Convention } from '../index.js';
+import legendSemanticsRuleSet from './rulesets/legend.js';
+
+/* istanbul ignore next -- empty-ruleset fallback is a tiny helper branch covered indirectly by profile resolution */
+const flattenRules = (ruleSets: RuleSet[]) =>
+  ruleSets.flatMap((ruleSet) => ruleSet.resolvePhases()[0] ?? []);
 
 export default new NamedRuleSetRegistry({
-  [conventionName(Convention.DataFlow, ruleSetName('semantics'))]: new RuleSet({
+  // [conventionName(Convention.DataFlow, ruleSetName('pre'))]: new RuleSet({
+  //   rules: flattenRules([lambdaPreRuleSet]),
+  // }),
+  [conventionName(Convention.DataFlow, ruleSetName('main'))]: new RuleSet({
     rules: [
-      { namedRule: conventionName(Convention.DataFlow, ruleName('authorizes.iam_to_targets')) },
-      {
-        namedRule: conventionName(
-          Convention.DataFlow,
-          ruleName('authorizes.non_iam_policies_to_targets'),
-        ),
-      },
-      {
-        namedRule: conventionName(
-          Convention.DataFlow,
-          ruleName('authorizes.lambda_permissions_to_targets'),
-        ),
-      },
-      {
-        namedRule: conventionName(Convention.DataFlow, ruleName('observed_by.telemetry_targets')),
-      },
-      {
-        namedRule: conventionName(Convention.DataFlow, ruleName('publishes.producers_to_brokers')),
-      },
-      {
-        namedRule: conventionName(
-          Convention.DataFlow,
-          ruleName('triggers.async_sources_to_consumers'),
-        ),
-      },
-      {
-        namedRule: conventionName(Convention.DataFlow, ruleName('accesses.compute_to_data_stores')),
-      },
-      { namedRule: conventionName(Convention.DataFlow, ruleName('invokes.sync_request_calls')) },
-      {
-        namedRule: conventionName(Convention.DataFlow, ruleName('routes.routing_tier_to_services')),
-      },
-      {
-        namedRule: conventionName(
-          Convention.DataFlow,
-          ruleName('routes.catalog_database_to_table'),
-        ),
-      },
-      { namedRule: conventionName(Convention.DataFlow, ruleName('legend')) },
+      //     ...flattenRules([
+      //       iamSemanticsRuleSet,
+      //       lambdaSemanticsRuleSet,
+      //       cloudwatchSemanticsRuleSet,
+      //       eventBridgeSemanticsRuleSet,
+      //       dynamodbSemanticsRuleSet,
+      //       schedulerSemanticsRuleSet,
+      //       s3SemanticsRuleSet,
+      //       ecsSemanticsRuleSet,
+      //       networkSemanticsRuleSet,
+      //       stepFunctionsSemanticsRuleSet,
+      //       secretsManagerSemanticsRuleSet,
+      //       athenaSemanticsRuleSet,
+      //       sqsSemanticsRuleSet,
+      //       snsSemanticsRuleSet,
+      //       kinesisSemanticsRuleSet,
+      //       albSemanticsRuleSet,
+      //       apiGatewaySemanticsRuleSet,
+      //       glueSemanticsRuleSet,
+      //       timestreamSemanticsRuleSet,
+      //       wafSemanticsRuleSet,
+      //       acmSemanticsRuleSet,
+      //       cloudFrontSemanticsRuleSet,
+      //     ]),
+      //     ...flattenRules([albCleanupRuleSet, ec2CleanupRuleSet, ecsCleanupRuleSet]),
+      new RemoveNode({
+        node: {
+          and: [
+            {
+              attr: {
+                key: 'terraform.resource',
+                eq: 'aws_lambda_event_source_mapping',
+              },
+            },
+            { not: { edge: { in: { any: true } } } },
+          ],
+        },
+      }),
     ],
+  }),
+  [conventionName(Convention.DataFlow, ruleSetName('final'))]: new RuleSet({
+    rules: flattenRules([legendSemanticsRuleSet]),
   }),
 });

@@ -1,6 +1,6 @@
 import { ruleName, ruleSetName } from '../namespaces.js';
-import dotRuleSet from './dot.js';
 import dotRules from '../rules/dot.js';
+import dotRuleSet from './dot.js';
 
 describe('dot rule sets', () => {
   it('shoud expose the SQS dead-letter rule set', () => {
@@ -33,7 +33,11 @@ describe('dot rule sets', () => {
       colour: '#c20202',
       title: 'SQS dead letters / failures',
     });
-    expect(phases[0][1].serialize().config.edge).toMatchObject({
+    const edgeLegend = phases[0][1].serialize();
+    if (!('edge' in edgeLegend.config)) {
+      throw new Error('Expected EdgeLegend to provide an edge config');
+    }
+    expect(edgeLegend.config.edge).toMatchObject({
       from: {
         attr: { key: 'terraform.resource', eq: 'aws_sqs_queue' },
       },

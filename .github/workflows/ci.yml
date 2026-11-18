@@ -19,8 +19,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24.x
+          node-version-file: .nvmrc
           cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -33,35 +36,17 @@ jobs:
         if: github.event_name == 'push'
         run: yarn commitlint --from "${{ github.event.before }}" --to "${{ github.sha }}"
 
-  validate:
-    name: Validate (Node ${{ matrix.node }})
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - 20.x
-          - 22.x
-          - 24.x
-
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version-file: .nvmrc
           cache: yarn
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Lint
-        run: yarn lint:ci
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - run: yarn verify

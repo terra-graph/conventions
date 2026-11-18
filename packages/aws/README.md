@@ -1,11 +1,11 @@
-# @terra-graph-conventions/aws
+# @terra-graph/conventions-aws
 
 AWS convention/provider package for `terra-graph`.
 
 ## Install
 
 ```bash
-yarn add @terra-graph-conventions/aws
+yarn add @terra-graph/conventions-aws
 ```
 
 ## API
@@ -19,7 +19,7 @@ import {
   awsProfiles,
   awsPlugins,
   awsConventionManifest,
-} from '@terra-graph-conventions/aws';
+} from '@terra-graph/conventions-aws';
 ```
 
 This package currently ships placeholder, serialization-safe convention assets and a manifest contract for future expansion.
