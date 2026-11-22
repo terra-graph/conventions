@@ -7,13 +7,11 @@ on:
       - rc/*
       
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   verify:
-    name: Verify
+    name: Release verification
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,9 +73,7 @@ jobs:
 
   release-packages:
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
       id-token: write
     name: Release ${{ matrix.workspace }}
     runs-on: ubuntu-latest
@@ -91,10 +87,19 @@ jobs:
       matrix: ${{ fromJson(needs.detect-packages.outputs.matrix) }}
 
     steps:
+      - name: Create release App token
+        id: release-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.release-app-token.outputs.token }}
 
       - name: Sync branch
         run: |
@@ -119,7 +124,7 @@ jobs:
       - name: Semantic release
         run: yarn workspace "${{ matrix.workspace }}" semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.release-app-token.outputs.token }}
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           NPM_CONFIG_PACKAGE_LOCK: false
           NPM_CONFIG_PROVENANCE: true
