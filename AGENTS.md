@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## Task workspaces and branches
+
+- Start each new change in a dedicated Git worktree on a task branch based on freshly fetched `origin/main`. This applies to implementation, documentation, maintenance and configuration. Reuse the same worktree for follow-ups on the same task; independent tasks need separate worktrees. Never change files on main or switch another task's checkout.
+- In the assembled TerraGraph workspace, identify affected repositories from the workspace root and use its `scripts/task-workspace` command to create the task workspace or add this repository. The root workspace instructions and task-workspace skill describe that setup. Do not require the private workspace when working in a standalone clone.
+- For a standalone clone, run `git fetch origin`, then `git worktree add --no-track -b <task-branch> <separate-task-path> origin/main`. Read the new checkout's instructions and continue there using explicit working directories and file paths. Creating the worktree is part of the requested change; no separate routine confirmation is needed.
+- A shell directory change does not rebind VS Code, agent instructions or sandbox permissions. Map original editor file references to the task checkout before editing. Preserve existing changes and do not share writable source, dependencies or build output through symlinks. Use normal narrowly scoped permission requests if access is blocked.
+- Before handoff or push, inspect `git branch -vv` in each affected repository. Unpublished task branches have no upstream; published branches track the matching branch on the intended remote. Remove accidental base-branch tracking with `git branch --unset-upstream`. For a first authorized push, use `git push --set-upstream origin <task-branch>`. Do not push or remove task worktrees without authorization.
+
 This file describes the agreed architecture, naming, and implementation conventions for `terra-graph-conventions`.
 
 ## Purpose
